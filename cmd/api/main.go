@@ -30,23 +30,28 @@ func main() {
 	}()
 
 	fmt.Println("database connected")
+
 	parcelRepo := repository.NewParcelRepository(db)
 	statusRepo := repository.NewStatusRepository(db)
 	photoRepo := repository.NewParcelPhotoRepository(db)
 	historyRepo := repository.NewParcelStatusHistoryRepository(db)
 	auditRepo := repository.NewAuditRepository(db)
+	userRepo := repository.NewUserRepository(db)
 	txManger := repository.NewTransactionManager(db)
 
 	parcelService := service.NewParcelService(parcelRepo, statusRepo, photoRepo, historyRepo, auditRepo, txManger)
+	userService := service.NewUserService(userRepo)
 
 	health := handler.Health
 	parcelHandler := handler.NewParcelHandler(parcelService)
+	userHandler := handler.NewUserHandler(userService)
 
 	http.HandleFunc("/health", health)
 	http.HandleFunc("/api/v1/parcels", parcelHandler.CreateParcel)
 	http.HandleFunc("/api/v1/parcels/track", parcelHandler.GetByTrackNumber)
 	http.HandleFunc("/api/v1/parcels/status", parcelHandler.UpdateStatus)
 	http.HandleFunc("/api/v1/parcels/photos", parcelHandler.AddPhoto)
+	http.HandleFunc("/api/v1/users", userHandler.Create)
 
 	_ = http.ListenAndServe(":"+cfg.Server.Port, nil)
 }
