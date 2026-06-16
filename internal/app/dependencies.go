@@ -1,6 +1,7 @@
 package app
 
 import (
+	"delivery-tracker/internal/config"
 	"delivery-tracker/internal/handler"
 	"delivery-tracker/internal/repository"
 	"delivery-tracker/internal/service"
@@ -14,7 +15,7 @@ type Dependencies struct {
 	AuthHandler   *handler.AuthHandler
 }
 
-func NewDependencies(db *sqlx.DB) *Dependencies {
+func NewDependencies(db *sqlx.DB, cfg *config.Config) *Dependencies {
 	parcelRepo := repository.NewParcelRepository(db)
 	statusRepo := repository.NewStatusRepository(db)
 	photoRepo := repository.NewParcelPhotoRepository(db)
@@ -35,7 +36,7 @@ func NewDependencies(db *sqlx.DB) *Dependencies {
 
 	userService := service.NewUserService(userRepo)
 
-	authService := service.NewAuthService(userRepo)
+	authService := service.NewAuthService(userRepo, cfg.JWT.Secret, cfg.JWT.TTL)
 
 	return &Dependencies{
 		ParcelHandler: handler.NewParcelHandler(parcelService),

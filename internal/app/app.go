@@ -24,7 +24,7 @@ func Run() error {
 		}
 	}()
 
-	deps := NewDependencies(db)
+	deps := NewDependencies(db, &cfg)
 
 	RegisterRoutes(deps)
 

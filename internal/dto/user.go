@@ -21,7 +21,7 @@ type LoginUserRequest struct {
 }
 
 type LoginUserResponse struct {
-	Login string `json:"login"`
+	Token string `json:"token"`
 }
 
 func (r CreateUserRequest) Validate() error {

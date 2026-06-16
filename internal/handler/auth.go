@@ -35,7 +35,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.authService.Login(req.Login, req.Password)
+	token, err := h.authService.Login(req.Login, req.Password)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidPassword) || errors.Is(err, repository.ErrUserNotFound) {
 			http.Error(w, "invalid login or password", http.StatusUnauthorized)
@@ -49,7 +49,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := dto.LoginUserResponse{Login: user.Login}
+	resp := dto.LoginUserResponse{Token: token}
 	responseJSON, err := json.Marshal(resp)
 	if err != nil {
 		http.Error(w, "failed to encode response", http.StatusInternalServerError)

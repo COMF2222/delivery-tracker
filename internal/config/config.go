@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/joho/godotenv"
 	"os"
+	"time"
 )
 
 type Config struct {
@@ -26,6 +27,7 @@ type ServerConfig struct {
 
 type JWTConfig struct {
 	Secret string
+	TTL    time.Duration
 }
 
 func Load() (Config, error) {
@@ -64,6 +66,10 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	jwtTTL, err := getRequiredEnv("JWT_TTL")
+	if err != nil {
+		return Config{}, err
+	}
 
 	db := DatabaseConfig{
 		Host:     dbHost,
@@ -75,7 +81,12 @@ func Load() (Config, error) {
 
 	server := ServerConfig{Port: serverPort}
 
-	jwt := JWTConfig{Secret: jwtSecret}
+	parseTTL, err := time.ParseDuration(jwtTTL)
+	if err != nil {
+		return Config{}, fmt.Errorf("failed to parse duration: %w", err)
+	}
+
+	jwt := JWTConfig{Secret: jwtSecret, TTL: parseTTL}
 
 	config := Config{
 		Database: db,
