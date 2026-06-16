@@ -15,6 +15,15 @@ type CreateUserResponse struct {
 	ID int `json:"id"`
 }
 
+type LoginUserRequest struct {
+	Login    string `json:"login"`
+	Password string `json:"password"`
+}
+
+type LoginUserResponse struct {
+	Login string `json:"login"`
+}
+
 func (r CreateUserRequest) Validate() error {
 	if r.Login == "" {
 		return fmt.Errorf("login cannot be empty")
@@ -28,6 +37,18 @@ func (r CreateUserRequest) Validate() error {
 		r.Role != domain.RoleManager {
 
 		return fmt.Errorf("invalid role")
+	}
+
+	return nil
+}
+
+func (r LoginUserRequest) Validate() error {
+	if r.Login == "" {
+		return fmt.Errorf("login cannot be empty")
+	}
+
+	if r.Password == "" {
+		return fmt.Errorf("password cannot be empty")
 	}
 
 	return nil

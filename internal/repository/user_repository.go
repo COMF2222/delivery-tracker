@@ -1,7 +1,9 @@
 package repository
 
 import (
+	"database/sql"
 	"delivery-tracker/internal/domain"
+	"errors"
 	"fmt"
 	"github.com/jmoiron/sqlx"
 )
@@ -23,4 +25,24 @@ func (r *UserRepository) Create(user *domain.User) error {
 	}
 
 	return nil
+}
+
+func (r *UserRepository) GetByLogin(login string) (*domain.User, error) {
+	var user domain.User
+	query := `SELECT id, login, password_hash, role, is_active, created_at FROM users WHERE login = $1`
+
+	if err := r.db.QueryRow(query, login).Scan(
+		&user.ID,
+		&user.Login,
+		&user.PasswordHash,
+		&user.Role,
+		&user.IsActive,
+		&user.CreatedAt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("failed to get user by login: %w", err)
+	}
+
+	return &user, nil
 }

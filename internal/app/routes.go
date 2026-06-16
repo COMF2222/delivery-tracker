@@ -14,4 +14,6 @@ func RegisterRoutes(deps *Dependencies) {
 	http.HandleFunc("/api/v1/parcels/photos", deps.ParcelHandler.AddPhoto)
 
 	http.HandleFunc("/api/v1/users", deps.UserHandler.Create)
+
+	http.HandleFunc("/api/v1/auth/login", deps.AuthHandler.Login)
 }

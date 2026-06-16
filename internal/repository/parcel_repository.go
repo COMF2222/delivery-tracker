@@ -63,7 +63,7 @@ func isTrackNumberConflict(err error) bool {
 }
 
 func (r *ParcelRepository) GetByTrackNumber(trackNumber string) (*domain.Parcel, error) {
-	parcel := domain.Parcel{}
+	var parcel domain.Parcel
 	query := `SELECT
 		p.id,
 		p.track_number,
@@ -75,7 +75,13 @@ func (r *ParcelRepository) GetByTrackNumber(trackNumber string) (*domain.Parcel,
     JOIN statuses s ON p.current_status = s.id
     WHERE track_number = $1`
 
-	if err := r.db.QueryRow(query, trackNumber).Scan(&parcel.ID, &parcel.TrackNumber, &parcel.ItemName, &parcel.RecipientName, &parcel.CurrentStatus, &parcel.CurrentLocation); err != nil {
+	if err := r.db.QueryRow(query, trackNumber).Scan(
+		&parcel.ID,
+		&parcel.TrackNumber,
+		&parcel.ItemName,
+		&parcel.RecipientName,
+		&parcel.CurrentStatus,
+		&parcel.CurrentLocation); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrParcelNotFound
 		}

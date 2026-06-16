@@ -11,6 +11,7 @@ import (
 type Dependencies struct {
 	ParcelHandler *handler.ParcelHandler
 	UserHandler   *handler.UserHandler
+	AuthHandler   *handler.AuthHandler
 }
 
 func NewDependencies(db *sqlx.DB) *Dependencies {
@@ -34,8 +35,11 @@ func NewDependencies(db *sqlx.DB) *Dependencies {
 
 	userService := service.NewUserService(userRepo)
 
+	authService := service.NewAuthService(userRepo)
+
 	return &Dependencies{
 		ParcelHandler: handler.NewParcelHandler(parcelService),
 		UserHandler:   handler.NewUserHandler(userService),
+		AuthHandler:   handler.NewAuthHandler(authService),
 	}
 }
