@@ -2,6 +2,7 @@ package service
 
 import (
 	"delivery-tracker/internal/auth"
+	"delivery-tracker/internal/domain"
 	"delivery-tracker/internal/repository"
 	"fmt"
 	"golang.org/x/crypto/bcrypt"
@@ -38,4 +39,12 @@ func (s *AuthService) Login(login, password string) (string, error) {
 	}
 
 	return token, nil
+}
+
+func (s *AuthService) ValidateToken(tokenString string) (int, string, domain.Role, error) {
+	claims, err := auth.ParseToken(tokenString, s.secret)
+	if err != nil {
+		return 0, "", "", fmt.Errorf("parse token: %w", err)
+	}
+	return claims.UserID, claims.Login, claims.Role, nil
 }

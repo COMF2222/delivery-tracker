@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"delivery-tracker/internal/contextkeys"
 	"delivery-tracker/internal/domain"
 	"delivery-tracker/internal/dto"
 	"delivery-tracker/internal/repository"
@@ -167,7 +168,13 @@ func (h *ParcelHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = h.parcelService.ChangeStatus(intId, req.Status, req.Location, 1); err != nil {
+	userID, ok := r.Context().Value(contextkeys.UserID).(int)
+	if !ok {
+		http.Error(w, "user not found in context", http.StatusUnauthorized)
+		return
+	}
+
+	if err = h.parcelService.ChangeStatus(intId, req.Status, req.Location, userID); err != nil {
 		if errors.Is(err, service.ErrInvalidStatusTransition) {
 			http.Error(w, "cannot skip statuses", http.StatusBadRequest)
 			return

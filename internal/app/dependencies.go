@@ -3,6 +3,7 @@ package app
 import (
 	"delivery-tracker/internal/config"
 	"delivery-tracker/internal/handler"
+	"delivery-tracker/internal/middleware"
 	"delivery-tracker/internal/repository"
 	"delivery-tracker/internal/service"
 
@@ -10,9 +11,10 @@ import (
 )
 
 type Dependencies struct {
-	ParcelHandler *handler.ParcelHandler
-	UserHandler   *handler.UserHandler
-	AuthHandler   *handler.AuthHandler
+	ParcelHandler  *handler.ParcelHandler
+	UserHandler    *handler.UserHandler
+	AuthHandler    *handler.AuthHandler
+	AuthMiddleware *middleware.AuthMiddleware
 }
 
 func NewDependencies(db *sqlx.DB, cfg *config.Config) *Dependencies {
@@ -38,9 +40,11 @@ func NewDependencies(db *sqlx.DB, cfg *config.Config) *Dependencies {
 
 	authService := service.NewAuthService(userRepo, cfg.JWT.Secret, cfg.JWT.TTL)
 
+	authMiddleware := middleware.NewAuthMiddleware(authService)
 	return &Dependencies{
-		ParcelHandler: handler.NewParcelHandler(parcelService),
-		UserHandler:   handler.NewUserHandler(userService),
-		AuthHandler:   handler.NewAuthHandler(authService),
+		ParcelHandler:  handler.NewParcelHandler(parcelService),
+		UserHandler:    handler.NewUserHandler(userService),
+		AuthHandler:    handler.NewAuthHandler(authService),
+		AuthMiddleware: authMiddleware,
 	}
 }
