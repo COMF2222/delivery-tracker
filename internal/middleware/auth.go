@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"delivery-tracker/internal/contextkeys"
+	"delivery-tracker/internal/domain"
 	"delivery-tracker/internal/service"
 	"net/http"
 	"strings"
@@ -44,5 +45,27 @@ func (m *AuthMiddleware) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 		r = r.WithContext(ctx)
 
 		next.ServeHTTP(w, r)
+	}
+}
+
+func (m *AuthMiddleware) RequireRole(allowedRoles ...domain.Role) func(handlerFunc http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			userRole, ok := r.Context().Value(contextkeys.Role).(domain.Role)
+			if !ok {
+				http.Error(w, "the user is not authenticated", http.StatusUnauthorized)
+				return
+			}
+
+			for _, allowedRole := range allowedRoles {
+				if userRole == allowedRole {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+
+			http.Error(w, "insufficient access rights", http.StatusForbidden)
+			return
+		}
 	}
 }
