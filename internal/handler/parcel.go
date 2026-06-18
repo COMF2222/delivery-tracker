@@ -236,3 +236,47 @@ func (h *ParcelHandler) AddPhoto(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusNoContent)
 }
+
+func (h *ParcelHandler) Archive(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "PATCH" {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		http.Error(w, "id cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	intId, err := strconv.Atoi(id)
+	if err != nil {
+		http.Error(w, "failed convert id to int", http.StatusBadRequest)
+		return
+	}
+	if intId <= 0 {
+		http.Error(w, "id must be positive", http.StatusBadRequest)
+		return
+	}
+
+	userID, ok := r.Context().Value(contextkeys.UserID).(int)
+	if !ok {
+		http.Error(w, "user not found in context", http.StatusUnauthorized)
+		return
+	}
+
+	if err = h.parcelService.Archive(intId, userID); err != nil {
+		if errors.Is(err, repository.ErrParcelNotFound) {
+			http.Error(w, "parcel not found", http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, service.ErrParcelNotDelivered) {
+			http.Error(w, "parcel not delivered", http.StatusBadRequest)
+			return
+		}
+		http.Error(w, "archive parcel", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}

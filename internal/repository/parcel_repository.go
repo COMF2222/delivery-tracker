@@ -179,3 +179,25 @@ func (r *ParcelRepository) UpdateStatusTx(tx *sqlx.Tx, parcelID, statusID int, l
 
 	return nil
 }
+
+func (r *ParcelRepository) ArchiveTx(tx *sqlx.Tx, parcelID int) error {
+	query := `UPDATE parcels
+	SET
+		is_archived = true
+	WHERE id = $1`
+
+	result, err := tx.Exec(query, parcelID)
+	if err != nil {
+		return fmt.Errorf("failed to archive parcel: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("get affected rows: %w", err)
+	}
+	if rowsAffected == 0 {
+		return ErrParcelNotFound
+	}
+
+	return nil
+}

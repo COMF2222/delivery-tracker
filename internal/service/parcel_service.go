@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jmoiron/sqlx"
+	"strconv"
 )
 
 type ParcelService struct {
@@ -171,6 +172,44 @@ func (s *ParcelService) AddPhoto(parcelID int, filePath string) error {
 	err = s.photoRepo.Create(&photo)
 	if err != nil {
 		return fmt.Errorf("create parcel photo: %w", err)
+	}
+
+	return nil
+}
+
+func (s *ParcelService) Archive(parcelID, changedBy int) error {
+	parcel, err := s.parcelRepo.GetByID(parcelID)
+	if err != nil {
+		return fmt.Errorf("get parcel id: %w", err)
+	}
+	if parcel.CurrentStatus != domain.StatusDelivered {
+		return ErrParcelNotDelivered
+	}
+
+	err = s.txManager.Do(func(tx *sqlx.Tx) error {
+		oldValue := parcel.IsArchived
+		if err := s.parcelRepo.ArchiveTx(tx, parcelID); err != nil {
+			return fmt.Errorf("failed to archive parcel: %w", err)
+		}
+
+		auditLog := domain.AuditLog{
+			UserID:     changedBy,
+			Action:     domain.ActionArchiveParcel,
+			OldValue:   strconv.FormatBool(oldValue),
+			NewValue:   strconv.FormatBool(true),
+			EntityType: domain.EntityTypeParcel,
+			EntityID:   parcelID,
+		}
+
+		if err := s.auditRepo.CreateTx(tx, &auditLog); err != nil {
+			return fmt.Errorf("failed to create audit log: %w", err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("archive parcel transaction: %w", err)
 	}
 
 	return nil

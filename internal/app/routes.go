@@ -20,6 +20,8 @@ func RegisterRoutes(deps *Dependencies) {
 		protect(deps.ParcelHandler.UpdateStatus, domain.RoleAdmin, domain.RoleManager))
 	http.HandleFunc("/api/v1/parcels/photos",
 		protect(deps.ParcelHandler.AddPhoto, domain.RoleAdmin, domain.RoleManager))
+	http.HandleFunc("/api/v1/parcels/archive",
+		protect(deps.ParcelHandler.Archive, domain.RoleAdmin, domain.RoleManager))
 	http.HandleFunc("/api/v1/parcels/track", deps.ParcelHandler.GetByTrackNumber)
 
 	http.HandleFunc("/api/v1/users", protect(deps.UserHandler.Create, domain.RoleAdmin))
