@@ -126,7 +126,7 @@ func (r *ParcelRepository) GetByID(id int) (*domain.Parcel, error) {
 			return nil, ErrParcelNotFound
 		}
 
-		return nil, fmt.Errorf("failed to get parcel by ID: %w", err)
+		return nil, fmt.Errorf("failed to get parcel by id: %w", err)
 	}
 
 	return &parcel, nil

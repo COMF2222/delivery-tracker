@@ -1,10 +1,14 @@
 package handler
 
 import (
+	"delivery-tracker/internal/contextkeys"
 	"delivery-tracker/internal/dto"
+	"delivery-tracker/internal/repository"
 	"delivery-tracker/internal/service"
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strconv"
 )
 
 type UserHandler struct {
@@ -54,4 +58,48 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+}
+
+func (h *UserHandler) Deactivate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "PATCH" {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		http.Error(w, "id cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	userID, err := strconv.Atoi(id)
+	if err != nil {
+		http.Error(w, "failed convert id to int", http.StatusBadRequest)
+		return
+	}
+	if userID <= 0 {
+		http.Error(w, "id must be positive", http.StatusBadRequest)
+		return
+	}
+
+	changedBy, ok := r.Context().Value(contextkeys.UserID).(int)
+	if !ok {
+		http.Error(w, "user not found in context", http.StatusUnauthorized)
+		return
+	}
+
+	if err = h.userService.Deactivate(userID, changedBy); err != nil {
+		if errors.Is(err, repository.ErrUserNotFound) {
+			http.Error(w, "user not found", http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, service.ErrUserAlreadyInactive) {
+			http.Error(w, "user already inactive", http.StatusBadRequest)
+			return
+		}
+		http.Error(w, "failed to deactivate user", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }

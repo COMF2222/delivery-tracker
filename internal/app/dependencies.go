@@ -36,7 +36,7 @@ func NewDependencies(db *sqlx.DB, cfg *config.Config) *Dependencies {
 		txManager,
 	)
 
-	userService := service.NewUserService(userRepo)
+	userService := service.NewUserService(userRepo, auditRepo, txManager)
 
 	authService := service.NewAuthService(userRepo, cfg.JWT.Secret, cfg.JWT.TTL)
 

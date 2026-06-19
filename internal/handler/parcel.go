@@ -274,6 +274,10 @@ func (h *ParcelHandler) Archive(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "parcel not delivered", http.StatusBadRequest)
 			return
 		}
+		if errors.Is(err, service.ErrParcelAlreadyArchived) {
+			http.Error(w, "parcel already archived", http.StatusBadRequest)
+			return
+		}
 		http.Error(w, "archive parcel", http.StatusInternalServerError)
 		return
 	}

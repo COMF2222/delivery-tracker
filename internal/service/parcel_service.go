@@ -182,6 +182,11 @@ func (s *ParcelService) Archive(parcelID, changedBy int) error {
 	if err != nil {
 		return fmt.Errorf("get parcel id: %w", err)
 	}
+
+	if parcel.IsArchived {
+		return ErrParcelAlreadyArchived
+	}
+
 	if parcel.CurrentStatus != domain.StatusDelivered {
 		return ErrParcelNotDelivered
 	}
@@ -201,7 +206,7 @@ func (s *ParcelService) Archive(parcelID, changedBy int) error {
 			EntityID:   parcelID,
 		}
 
-		if err := s.auditRepo.CreateTx(tx, &auditLog); err != nil {
+		if err = s.auditRepo.CreateTx(tx, &auditLog); err != nil {
 			return fmt.Errorf("failed to create audit log: %w", err)
 		}
 
