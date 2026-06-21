@@ -49,6 +49,21 @@ type AddPhotoRequest struct {
 	FilePath string `json:"file_path"`
 }
 
+type ParcelListItemResponse struct {
+	ID              int           `json:"id"`
+	TrackNumber     string        `json:"track_number"`
+	ItemName        string        `json:"item_name"`
+	RecipientName   string        `json:"recipient_name"`
+	CurrentStatus   domain.Status `json:"current_status"`
+	CurrentLocation string        `json:"current_location"`
+}
+
+type ListParcelResponse struct {
+	Items []ParcelListItemResponse `json:"items"`
+	Page  int                      `json:"page"`
+	Limit int                      `json:"limit"`
+}
+
 func (r CreateParcelRequest) Validate() error {
 	if r.ItemName == "" || r.RecipientName == "" || r.RecipientPhone == "" || r.RecipientAddress == "" {
 		return fmt.Errorf("failed to validate parcel request")

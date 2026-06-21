@@ -63,6 +63,7 @@ func (r *UserRepository) GetByID(userID int) (*domain.User, error) {
 		}
 		return nil, fmt.Errorf("failed to get user by id: %w", err)
 	}
+
 	return &user, nil
 }
 
@@ -76,10 +77,12 @@ func (r *UserRepository) DeactivateTx(tx *sqlx.Tx, userID int) error {
 	if err != nil {
 		return fmt.Errorf("failed to deactivate user: %w", err)
 	}
+
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		return fmt.Errorf("get affected rows: %w", err)
 	}
+
 	if rowsAffected == 0 {
 		return ErrUserNotFound
 	}

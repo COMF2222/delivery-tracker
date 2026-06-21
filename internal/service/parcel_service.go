@@ -219,3 +219,33 @@ func (s *ParcelService) Archive(parcelID, changedBy int) error {
 
 	return nil
 }
+
+func (s *ParcelService) List(status domain.Status, page, limit int) ([]domain.Parcel, error) {
+	if page < 1 {
+		return nil, ErrInvalidPage
+	}
+
+	if limit < 1 {
+		return nil, ErrInvalidLimit
+	}
+
+	if limit > 100 {
+		return nil, ErrInvalidLimit
+	}
+
+	offset := (page - 1) * limit
+
+	if status == "" {
+		parcels, err := s.parcelRepo.List(limit, offset)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get parcel list: %w", err)
+		}
+		return parcels, nil
+	}
+
+	parcels, err := s.parcelRepo.ListByStatus(status, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get parcel list by status: %w", err)
+	}
+	return parcels, nil
+}

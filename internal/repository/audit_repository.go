@@ -24,6 +24,7 @@ func (r *AuditRepository) Create(log *domain.AuditLog) error {
 		entity_id
 		) 
 	VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
+
 	err := r.db.QueryRow(
 		query,
 		log.UserID,
@@ -50,6 +51,7 @@ func (r *AuditRepository) CreateTx(tx *sqlx.Tx, log *domain.AuditLog) error {
 		entity_id
 		) 
 	VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
+
 	err := tx.QueryRow(
 		query,
 		log.UserID,

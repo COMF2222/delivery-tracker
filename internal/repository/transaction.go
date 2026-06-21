@@ -18,7 +18,9 @@ func (tm *TransactionManager) Do(fn func(tx *sqlx.Tx) error) error {
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
+
 	fnErr := fn(tx)
+
 	if fnErr != nil {
 		rollbackErr := tx.Rollback()
 		if rollbackErr != nil {
@@ -26,9 +28,11 @@ func (tm *TransactionManager) Do(fn func(tx *sqlx.Tx) error) error {
 		}
 		return fnErr
 	}
+
 	err = tx.Commit()
 	if err != nil {
 		return fmt.Errorf("commit transaction: %w", err)
 	}
+
 	return nil
 }

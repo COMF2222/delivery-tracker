@@ -95,6 +95,7 @@ func (r *ParcelStatusHistoryRepository) Create(
 		) 
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id`
+
 	err := r.db.QueryRow(
 		query,
 		history.ParcelID,
@@ -125,6 +126,7 @@ func (r *ParcelStatusHistoryRepository) CreateTx(
 		) 
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id`
+
 	err := tx.QueryRow(
 		query,
 		history.ParcelID,

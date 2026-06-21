@@ -284,3 +284,98 @@ func (h *ParcelHandler) Archive(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusNoContent)
 }
+
+func (h *ParcelHandler) List(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	q := r.URL.Query()
+	status := domain.Status(q.Get("status"))
+	pageStr := q.Get("page")
+	limitStr := q.Get("limit")
+
+	var page int
+	var limit int
+	var err error
+
+	if pageStr == "" {
+		page = 1
+	} else {
+		page, err = strconv.Atoi(pageStr)
+		if err != nil {
+			http.Error(w, "failed to atoi page", http.StatusBadRequest)
+			return
+		}
+	}
+
+	if limitStr == "" {
+		limit = 20
+	} else {
+		limit, err = strconv.Atoi(limitStr)
+		if err != nil {
+			http.Error(w, "failed to atoi limit", http.StatusBadRequest)
+			return
+		}
+	}
+
+	parcels, err := h.parcelService.List(status, page, limit)
+	if err != nil {
+		if errors.Is(err, service.ErrInvalidLimit) {
+			http.Error(w, "invalid limit", http.StatusBadRequest)
+			return
+		}
+
+		if errors.Is(err, service.ErrInvalidPage) {
+			http.Error(w, "invalid page", http.StatusBadRequest)
+			return
+		}
+
+		http.Error(w, "get parcel list", http.StatusInternalServerError)
+		return
+	}
+
+	listItemResp := make([]dto.ParcelListItemResponse, 0, len(parcels))
+	for _, parcel := range parcels {
+		listItemResp = append(listItemResp, dto.ParcelListItemResponse{
+			ID:              parcel.ID,
+			TrackNumber:     parcel.TrackNumber,
+			ItemName:        parcel.ItemName,
+			RecipientName:   parcel.RecipientName,
+			CurrentStatus:   parcel.CurrentStatus,
+			CurrentLocation: parcel.CurrentLocation,
+		})
+	}
+
+	listResp := dto.ListParcelResponse{
+		Items: listItemResp,
+		Page:  page,
+		Limit: limit,
+	}
+
+	responseJSON, err := json.Marshal(listResp)
+	if err != nil {
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(responseJSON)
+	if err != nil {
+		return
+	}
+}
+
+func (h *ParcelHandler) Parcels(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		h.List(w, r)
+	case http.MethodPost:
+		h.CreateParcel(w, r)
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}

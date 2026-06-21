@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
+	"log"
 )
 
 type ParcelRepository struct {
@@ -200,4 +201,83 @@ func (r *ParcelRepository) ArchiveTx(tx *sqlx.Tx, parcelID int) error {
 	}
 
 	return nil
+}
+
+func (r *ParcelRepository) List(limit, offset int) ([]domain.Parcel, error) {
+	parcels := make([]domain.Parcel, 0)
+	query := `SELECT
+		p.id,
+		p.track_number,
+		p.item_name,
+		p.recipient_name,
+		s.status AS current_status,
+		p.current_location AS current_location
+	FROM parcels p
+    JOIN statuses s ON p.current_status = s.id
+    ORDER BY p.created_at DESC
+    LIMIT $1
+    OFFSET $2`
+
+	rows, err := r.db.Queryx(query, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("failed to close rows: %v", err)
+		}
+	}()
+	for rows.Next() {
+		var parcel domain.Parcel
+		if err = rows.StructScan(&parcel); err != nil {
+			return nil, fmt.Errorf("scan parcel row: %w", err)
+		}
+		parcels = append(parcels, parcel)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate parcel rows: %w", err)
+	}
+
+	return parcels, nil
+}
+
+func (r *ParcelRepository) ListByStatus(status domain.Status, limit, offset int) ([]domain.Parcel, error) {
+	parcels := make([]domain.Parcel, 0)
+	query := `SELECT
+		p.id,
+		p.track_number,
+		p.item_name,
+		p.recipient_name,
+		s.status AS current_status,
+		p.current_location AS current_location
+	FROM parcels p
+    JOIN statuses s ON p.current_status = s.id
+    WHERE s.status = $1
+    ORDER BY p.created_at DESC
+    LIMIT $2
+    OFFSET $3`
+
+	rows, err := r.db.Queryx(query, status, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Printf("failed to close rows: %v", err)
+		}
+	}()
+	for rows.Next() {
+		var parcel domain.Parcel
+		if err = rows.StructScan(&parcel); err != nil {
+			return nil, fmt.Errorf("scan parcel row: %w", err)
+		}
+		parcels = append(parcels, parcel)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate parcel rows: %w", err)
+	}
+
+	return parcels, nil
 }
