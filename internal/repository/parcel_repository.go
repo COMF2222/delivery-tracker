@@ -5,9 +5,10 @@ import (
 	"delivery-tracker/internal/domain"
 	"errors"
 	"fmt"
+	"log"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
-	"log"
 )
 
 type ParcelRepository struct {

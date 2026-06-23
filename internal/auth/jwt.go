@@ -3,9 +3,10 @@ package auth
 import (
 	"delivery-tracker/internal/domain"
 	"fmt"
-	"github.com/golang-jwt/jwt/v5"
 	"strconv"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type Claims struct {

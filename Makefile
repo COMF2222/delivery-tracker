@@ -7,3 +7,16 @@ migrate-up:
 
 migrate-down:
 	migrate -path migrations -database "$(DATABASE_URL)" down
+
+.PHONY: swagger
+swagger:
+	swag init -g cmd/api/main.go -o docs/ --parseDependency
+
+.PHONY: swagger-fmt
+swagger-fmt:
+	swag fmt
+
+# Пересоздавать документацию перед каждым запуском
+.PHONY: run
+run: swagger
+	go run ./cmd/api/main.go

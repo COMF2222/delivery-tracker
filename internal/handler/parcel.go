@@ -5,6 +5,7 @@ import (
 	"delivery-tracker/internal/domain"
 	"delivery-tracker/internal/dto"
 	"delivery-tracker/internal/repository"
+	"delivery-tracker/internal/response"
 	"delivery-tracker/internal/service"
 	"encoding/json"
 	"errors"
@@ -20,23 +21,37 @@ func NewParcelHandler(parcelService *service.ParcelService) *ParcelHandler {
 	return &ParcelHandler{parcelService: parcelService}
 }
 
+// CreateParcel
+//
+//	@Summary		Создание посылки
+//	@Description	Создаёт посылку и генерирует трек-номер
+//	@Tags			Parcel
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		dto.CreateParcelRequest	true	"Create parcel request"
+//	@Success		201		{object}	dto.CreateParcelResponse
+//	@Failure		400		{object}	response.ErrorResponse	"Bad request"
+//	@Failure		401		{object}	response.ErrorResponse	"Unauthorized"
+//	@Failure		403		{object}	response.ErrorResponse	"Forbidden"
+//	@Failure		405		{object}	response.ErrorResponse	"Method not allowed"
+//	@Failure		500		{object}	response.ErrorResponse	"Internal server error"
+//	@Security		BearerAuth
+//	@Router			/parcels [post]
 func (h *ParcelHandler) CreateParcel(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		response.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
 
 	var req dto.CreateParcelRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "failed to decode request", http.StatusBadRequest)
+		response.Error(w, "failed to decode request", http.StatusBadRequest)
 		return
 	}
 
 	if err := req.Validate(); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		response.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -48,7 +63,7 @@ func (h *ParcelHandler) CreateParcel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.parcelService.CreateParcel(&parcel); err != nil {
-		http.Error(w, "failed to create parcel", http.StatusInternalServerError)
+		response.Error(w, "failed to create parcel", http.StatusInternalServerError)
 		return
 	}
 
@@ -57,38 +72,41 @@ func (h *ParcelHandler) CreateParcel(w http.ResponseWriter, r *http.Request) {
 		TrackNumber: parcel.TrackNumber,
 	}
 
-	responseJSON, err := json.Marshal(resp)
-	if err != nil {
-		http.Error(w, "failed to encode response", http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusCreated)
-	_, err = w.Write(responseJSON)
-	if err != nil {
-		return
-	}
+	response.JSON(w, http.StatusCreated, resp)
 }
 
+// GetByTrackNumber
+//
+//	@Summary		Получение посылки по трек-номеру
+//	@Description	Возвращает информацию о посылке, историю статусов и фотографии
+//	@Tags			Parcel
+//	@Produce		json
+//	@Param			track_number	query		string	true	"Track number"
+//	@Success		200				{object}	dto.GetParcelResponse
+//	@Failure		400				{object}	response.ErrorResponse	"Bad request"
+//	@Failure		404				{object}	response.ErrorResponse	"Not found"
+//	@Failure		405				{object}	response.ErrorResponse	"Method not allowed"
+//	@Failure		500				{object}	response.ErrorResponse	"Internal server error"
+//	@Router			/parcels/track [get]
 func (h *ParcelHandler) GetByTrackNumber(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		response.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	trackNumber := r.URL.Query().Get("track_number")
 	if trackNumber == "" {
-		http.Error(w, "track number cannot be empty", http.StatusBadRequest)
+		response.Error(w, "track number cannot be empty", http.StatusBadRequest)
 		return
 	}
 
 	parcel, err := h.parcelService.GetByTrackNumber(trackNumber)
 	if err != nil {
 		if errors.Is(err, repository.ErrParcelNotFound) {
-			http.Error(w, "parcel not found", http.StatusNotFound)
+			response.Error(w, "parcel not found", http.StatusNotFound)
 			return
 		}
-		http.Error(w, "failed to get parcel by track number", http.StatusInternalServerError)
+		response.Error(w, "failed to get parcel by track number", http.StatusInternalServerError)
 		return
 	}
 	photosResponse := make([]dto.ParcelPhotoResponse, 0, len(parcel.Photos))
@@ -119,175 +137,227 @@ func (h *ParcelHandler) GetByTrackNumber(w http.ResponseWriter, r *http.Request)
 		History:         historyResponse,
 		Photos:          photosResponse,
 	}
-	responseJSON, err := json.Marshal(resp)
-	if err != nil {
-		http.Error(w, "failed to encode response", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-
-	w.WriteHeader(http.StatusOK)
-	_, err = w.Write(responseJSON)
-	if err != nil {
-		return
-	}
+	response.JSON(w, http.StatusOK, resp)
 }
 
+// UpdateStatus
+//
+//	@Summary		Обновление статуса посылки
+//	@Description	Обновляет статус посылки и добавляет запись в историю
+//	@Tags			Parcel
+//	@Produce		json
+//	@Param			id		query	int						true	"ID"
+//	@Param			request	body	dto.ChangeStatusRequest	true	"Change status request"
+//	@Success		204		"No Content"
+//	@Failure		400		{object}	response.ErrorResponse	"Bad request"
+//	@Failure		401		{object}	response.ErrorResponse	"Unauthorized"
+//	@Failure		404		{object}	response.ErrorResponse	"Not found"
+//	@Failure		405		{object}	response.ErrorResponse	"Method not allowed"
+//	@Failure		500		{object}	response.ErrorResponse	"Internal server error"
+//	@Security		BearerAuth
+//	@Router			/parcels/status [patch]
 func (h *ParcelHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "PATCH" {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		response.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	id := r.URL.Query().Get("id")
 	if id == "" {
-		http.Error(w, "id cannot be empty", http.StatusBadRequest)
+		response.Error(w, "id cannot be empty", http.StatusBadRequest)
 		return
 	}
 
 	intId, err := strconv.Atoi(id)
 	if err != nil {
-		http.Error(w, "failed convert id to int", http.StatusBadRequest)
+		response.Error(w, "failed convert id to int", http.StatusBadRequest)
 		return
 	}
 	if intId <= 0 {
-		http.Error(w, "id must be positive", http.StatusBadRequest)
+		response.Error(w, "id must be positive", http.StatusBadRequest)
 		return
 	}
 
 	var req dto.ChangeStatusRequest
 
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "failed to decode request", http.StatusBadRequest)
+		response.Error(w, "failed to decode request", http.StatusBadRequest)
 		return
 	}
 
 	if req.Status == "" || req.Location == "" {
-		http.Error(w, "status and location cannot be empty", http.StatusBadRequest)
+		response.Error(w, "status and location cannot be empty", http.StatusBadRequest)
 		return
 	}
 
 	userID, ok := r.Context().Value(contextkeys.UserID).(int)
 	if !ok {
-		http.Error(w, "user not found in context", http.StatusUnauthorized)
+		response.Error(w, "user not found in context", http.StatusUnauthorized)
 		return
 	}
 
 	if err = h.parcelService.ChangeStatus(intId, req.Status, req.Location, userID); err != nil {
 		if errors.Is(err, service.ErrInvalidStatusTransition) {
-			http.Error(w, "cannot skip statuses", http.StatusBadRequest)
+			response.Error(w, "cannot skip statuses", http.StatusBadRequest)
 			return
 		}
 		if errors.Is(err, repository.ErrParcelNotFound) {
-			http.Error(w, "parcel not found", http.StatusNotFound)
+			response.Error(w, "parcel not found", http.StatusNotFound)
 			return
 		}
-		http.Error(w, "failed to update parcel status", http.StatusInternalServerError)
+		response.Error(w, "failed to update parcel status", http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// AddPhoto
+//
+//	@Summary		Добавление фото к посылке
+//	@Description	Добавляет фото к посылке
+//	@Tags			Parcel
+//	@Produce		json
+//	@Param			id		query	int					true	"ID"
+//	@Param			request	body	dto.AddPhotoRequest	true	"Add photo request"
+//	@Success		204		"No Content"
+//	@Failure		400		{object}	response.ErrorResponse	"Bad request"
+//	@Failure		401		{object}	response.ErrorResponse	"Unauthorized"
+//	@Failure		404		{object}	response.ErrorResponse	"Not found"
+//	@Failure		405		{object}	response.ErrorResponse	"Method not allowed"
+//	@Failure		500		{object}	response.ErrorResponse	"Internal server error"
+//	@Security		BearerAuth
+//	@Router			/parcels/photos [post]
 func (h *ParcelHandler) AddPhoto(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		response.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	id := r.URL.Query().Get("id")
 
 	if id == "" {
-		http.Error(w, "id cannot be empty", http.StatusBadRequest)
+		response.Error(w, "id cannot be empty", http.StatusBadRequest)
 		return
 	}
 
 	intId, err := strconv.Atoi(id)
 	if err != nil {
-		http.Error(w, "failed convert id to int", http.StatusBadRequest)
+		response.Error(w, "failed convert id to int", http.StatusBadRequest)
 		return
 	}
 	if intId <= 0 {
-		http.Error(w, "id must be positive", http.StatusBadRequest)
+		response.Error(w, "id must be positive", http.StatusBadRequest)
 		return
 	}
 
 	var req dto.AddPhotoRequest
 
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "failed to decode request", http.StatusBadRequest)
+		response.Error(w, "failed to decode request", http.StatusBadRequest)
 		return
 	}
 
 	if req.FilePath == "" {
-		http.Error(w, "file path cannot be empty", http.StatusBadRequest)
+		response.Error(w, "file path cannot be empty", http.StatusBadRequest)
 		return
 	}
 
 	if err = h.parcelService.AddPhoto(intId, req.FilePath); err != nil {
 		if errors.Is(err, repository.ErrParcelNotFound) {
-			http.Error(w, "parcel not found", http.StatusNotFound)
+			response.Error(w, "parcel not found", http.StatusNotFound)
 			return
 		}
-		http.Error(w, "failed to create parcel photo", http.StatusInternalServerError)
+		response.Error(w, "failed to create parcel photo", http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// Archive
+//
+//	@Summary		Архивирует посылку
+//	@Description	Отправляет посылку в архив
+//	@Tags			Parcel
+//	@Produce		json
+//	@Param			id	query	int	true	"ID"
+//	@Success		204	"No Content"
+//	@Failure		400	{object}	response.ErrorResponse	"Bad request"
+//	@Failure		401	{object}	response.ErrorResponse	"Unauthorized"
+//	@Failure		404	{object}	response.ErrorResponse	"Not found"
+//	@Failure		405	{object}	response.ErrorResponse	"Method not allowed"
+//	@Failure		500	{object}	response.ErrorResponse	"Internal server error"
+//	@Security		BearerAuth
+//	@Router			/parcels/archive [patch]
 func (h *ParcelHandler) Archive(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "PATCH" {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		response.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	id := r.URL.Query().Get("id")
 	if id == "" {
-		http.Error(w, "id cannot be empty", http.StatusBadRequest)
+		response.Error(w, "id cannot be empty", http.StatusBadRequest)
 		return
 	}
 
 	intId, err := strconv.Atoi(id)
 	if err != nil {
-		http.Error(w, "failed convert id to int", http.StatusBadRequest)
+		response.Error(w, "failed convert id to int", http.StatusBadRequest)
 		return
 	}
 	if intId <= 0 {
-		http.Error(w, "id must be positive", http.StatusBadRequest)
+		response.Error(w, "id must be positive", http.StatusBadRequest)
 		return
 	}
 
 	userID, ok := r.Context().Value(contextkeys.UserID).(int)
 	if !ok {
-		http.Error(w, "user not found in context", http.StatusUnauthorized)
+		response.Error(w, "user not found in context", http.StatusUnauthorized)
 		return
 	}
 
 	if err = h.parcelService.Archive(intId, userID); err != nil {
 		if errors.Is(err, repository.ErrParcelNotFound) {
-			http.Error(w, "parcel not found", http.StatusNotFound)
+			response.Error(w, "parcel not found", http.StatusNotFound)
 			return
 		}
 		if errors.Is(err, service.ErrParcelNotDelivered) {
-			http.Error(w, "parcel not delivered", http.StatusBadRequest)
+			response.Error(w, "parcel not delivered", http.StatusBadRequest)
 			return
 		}
 		if errors.Is(err, service.ErrParcelAlreadyArchived) {
-			http.Error(w, "parcel already archived", http.StatusBadRequest)
+			response.Error(w, "parcel already archived", http.StatusBadRequest)
 			return
 		}
-		http.Error(w, "archive parcel", http.StatusInternalServerError)
+		response.Error(w, "archive parcel", http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// List
+//
+//	@Summary		Получение списка посылок
+//	@Description	Возвращает список посылок с пагинацией и фильтром по статусу
+//	@Tags			Parcel
+//	@Produce		json
+//	@Param			status	query		string	false	"Parcel status filter"
+//	@Param			page	query		int		false	"Page number"
+//	@Param			limit	query		int		false	"Items per page"
+//	@Success		200		{object}	dto.ListParcelResponse
+//	@Failure		400		{object}	response.ErrorResponse	"Bad request"
+//	@Failure		401		{object}	response.ErrorResponse	"Unauthorized"
+//	@Failure		403		{object}	response.ErrorResponse	"Forbidden"
+//	@Failure		405		{object}	response.ErrorResponse	"Method not allowed"
+//	@Failure		500		{object}	response.ErrorResponse	"Internal server error"
+//	@Security		BearerAuth
+//	@Router			/parcels [get]
 func (h *ParcelHandler) List(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		response.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -305,7 +375,7 @@ func (h *ParcelHandler) List(w http.ResponseWriter, r *http.Request) {
 	} else {
 		page, err = strconv.Atoi(pageStr)
 		if err != nil {
-			http.Error(w, "failed to atoi page", http.StatusBadRequest)
+			response.Error(w, "failed to atoi page", http.StatusBadRequest)
 			return
 		}
 	}
@@ -315,7 +385,7 @@ func (h *ParcelHandler) List(w http.ResponseWriter, r *http.Request) {
 	} else {
 		limit, err = strconv.Atoi(limitStr)
 		if err != nil {
-			http.Error(w, "failed to atoi limit", http.StatusBadRequest)
+			response.Error(w, "failed to atoi limit", http.StatusBadRequest)
 			return
 		}
 	}
@@ -323,16 +393,16 @@ func (h *ParcelHandler) List(w http.ResponseWriter, r *http.Request) {
 	parcels, err := h.parcelService.List(status, page, limit)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidLimit) {
-			http.Error(w, "invalid limit", http.StatusBadRequest)
+			response.Error(w, "invalid limit", http.StatusBadRequest)
 			return
 		}
 
 		if errors.Is(err, service.ErrInvalidPage) {
-			http.Error(w, "invalid page", http.StatusBadRequest)
+			response.Error(w, "invalid page", http.StatusBadRequest)
 			return
 		}
 
-		http.Error(w, "get parcel list", http.StatusInternalServerError)
+		response.Error(w, "get parcel list", http.StatusInternalServerError)
 		return
 	}
 
@@ -354,19 +424,7 @@ func (h *ParcelHandler) List(w http.ResponseWriter, r *http.Request) {
 		Limit: limit,
 	}
 
-	responseJSON, err := json.Marshal(listResp)
-	if err != nil {
-		http.Error(w, "failed to encode response", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-
-	w.WriteHeader(http.StatusOK)
-	_, err = w.Write(responseJSON)
-	if err != nil {
-		return
-	}
+	response.JSON(w, http.StatusOK, listResp)
 }
 
 func (h *ParcelHandler) Parcels(w http.ResponseWriter, r *http.Request) {
@@ -376,6 +434,6 @@ func (h *ParcelHandler) Parcels(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		h.CreateParcel(w, r)
 	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		response.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
 }

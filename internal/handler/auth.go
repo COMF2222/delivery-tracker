@@ -3,6 +3,7 @@ package handler
 import (
 	"delivery-tracker/internal/dto"
 	"delivery-tracker/internal/repository"
+	"delivery-tracker/internal/response"
 	"delivery-tracker/internal/service"
 	"encoding/json"
 	"errors"
@@ -17,50 +18,53 @@ func NewAuthHandler(authService *service.AuthService) *AuthHandler {
 	return &AuthHandler{authService: authService}
 }
 
+// Login
+//
+//	@Summary		Авторизация пользователя
+//	@Description	Авторизация пользователей
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		dto.LoginUserRequest	true	"Login request"
+//	@Success		200		{object}	dto.LoginUserResponse
+//	@Failure		400		{object}	response.ErrorResponse	"Bad request"
+//	@Failure		401		{object}	response.ErrorResponse	"Invalid login or password"
+//	@Failure		403		{object}	response.ErrorResponse	"User inactive"
+//	@Failure		405		{object}	response.ErrorResponse	"Method not allowed"
+//	@Failure		500		{object}	response.ErrorResponse	"Internal server error"
+//	@Router			/auth/login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		response.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var req dto.LoginUserRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "failed to decode request", http.StatusBadRequest)
+		response.Error(w, "failed to decode request", http.StatusBadRequest)
 		return
 	}
 
 	if err := req.Validate(); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		response.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	token, err := h.authService.Login(req.Login, req.Password)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidPassword) || errors.Is(err, repository.ErrUserNotFound) {
-			http.Error(w, "invalid login or password", http.StatusUnauthorized)
+			response.Error(w, "invalid login or password", http.StatusUnauthorized)
 			return
 		}
 		if errors.Is(err, service.ErrUserInactive) {
-			http.Error(w, "user is inactive", http.StatusForbidden)
+			response.Error(w, "user is inactive", http.StatusForbidden)
 			return
 		}
-		http.Error(w, "failed to login user", http.StatusInternalServerError)
+		response.Error(w, "failed to login user", http.StatusInternalServerError)
 		return
 	}
 
 	resp := dto.LoginUserResponse{Token: token}
-	responseJSON, err := json.Marshal(resp)
-	if err != nil {
-		http.Error(w, "failed to encode response", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-
-	w.WriteHeader(http.StatusOK)
-	_, err = w.Write(responseJSON)
-	if err != nil {
-		return
-	}
+	response.JSON(w, http.StatusOK, resp)
 }

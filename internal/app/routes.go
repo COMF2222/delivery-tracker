@@ -4,6 +4,8 @@ import (
 	"delivery-tracker/internal/domain"
 	"delivery-tracker/internal/handler"
 	"net/http"
+
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 func RegisterRoutes(deps *Dependencies) {
@@ -28,4 +30,11 @@ func RegisterRoutes(deps *Dependencies) {
 	http.HandleFunc("/api/v1/users/deactivate", protect(deps.UserHandler.Deactivate, domain.RoleAdmin))
 
 	http.HandleFunc("/api/v1/auth/login", deps.AuthHandler.Login)
+
+	http.Handle(
+		"/swagger/",
+		httpSwagger.Handler(
+			httpSwagger.URL("/swagger/doc.json"),
+		),
+	)
 }

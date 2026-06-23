@@ -1,0 +1,551 @@
+basePath: /api/v1
+definitions:
+  delivery-tracker_internal_domain.Role:
+    enum:
+    - admin
+    - manager
+    type: string
+    x-enum-varnames:
+    - RoleAdmin
+    - RoleManager
+  delivery-tracker_internal_domain.Status:
+    enum:
+    - CREATED
+    - PURCHASED
+    - WAREHOUSE
+    - IN_TRANSIT
+    - CUSTOMS
+    - ARRIVED
+    - DELIVERED
+    type: string
+    x-enum-varnames:
+    - StatusCreated
+    - StatusPurchased
+    - StatusWarehouse
+    - StatusInTransit
+    - StatusCustoms
+    - StatusArrived
+    - StatusDelivered
+  delivery-tracker_internal_dto.AddPhotoRequest:
+    properties:
+      file_path:
+        type: string
+    type: object
+  delivery-tracker_internal_dto.ChangeStatusRequest:
+    properties:
+      location:
+        type: string
+      status:
+        $ref: '#/definitions/delivery-tracker_internal_domain.Status'
+    type: object
+  delivery-tracker_internal_dto.CreateParcelRequest:
+    properties:
+      item_name:
+        type: string
+      recipient_address:
+        type: string
+      recipient_name:
+        type: string
+      recipient_phone:
+        type: string
+    type: object
+  delivery-tracker_internal_dto.CreateParcelResponse:
+    properties:
+      id:
+        type: integer
+      track_number:
+        type: string
+    type: object
+  delivery-tracker_internal_dto.CreateUserRequest:
+    properties:
+      login:
+        type: string
+      password:
+        type: string
+      role:
+        $ref: '#/definitions/delivery-tracker_internal_domain.Role'
+    type: object
+  delivery-tracker_internal_dto.CreateUserResponse:
+    properties:
+      id:
+        type: integer
+    type: object
+  delivery-tracker_internal_dto.GetParcelResponse:
+    properties:
+      current_location:
+        type: string
+      current_status:
+        $ref: '#/definitions/delivery-tracker_internal_domain.Status'
+      history:
+        items:
+          $ref: '#/definitions/delivery-tracker_internal_dto.ParcelHistoryResponse'
+        type: array
+      item_name:
+        type: string
+      photos:
+        items:
+          $ref: '#/definitions/delivery-tracker_internal_dto.ParcelPhotoResponse'
+        type: array
+      recipient:
+        type: string
+      track_number:
+        type: string
+    type: object
+  delivery-tracker_internal_dto.ListParcelResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/delivery-tracker_internal_dto.ParcelListItemResponse'
+        type: array
+      limit:
+        type: integer
+      page:
+        type: integer
+    type: object
+  delivery-tracker_internal_dto.LoginUserRequest:
+    properties:
+      login:
+        type: string
+      password:
+        type: string
+    type: object
+  delivery-tracker_internal_dto.LoginUserResponse:
+    properties:
+      token:
+        type: string
+    type: object
+  delivery-tracker_internal_dto.ParcelHistoryResponse:
+    properties:
+      created_at:
+        type: string
+      location:
+        type: string
+      new_status:
+        $ref: '#/definitions/delivery-tracker_internal_domain.Status'
+      old_status:
+        $ref: '#/definitions/delivery-tracker_internal_domain.Status'
+    type: object
+  delivery-tracker_internal_dto.ParcelListItemResponse:
+    properties:
+      current_location:
+        type: string
+      current_status:
+        $ref: '#/definitions/delivery-tracker_internal_domain.Status'
+      id:
+        type: integer
+      item_name:
+        type: string
+      recipient_name:
+        type: string
+      track_number:
+        type: string
+    type: object
+  delivery-tracker_internal_dto.ParcelPhotoResponse:
+    properties:
+      created_at:
+        type: string
+      file_path:
+        type: string
+    type: object
+  delivery-tracker_internal_response.ErrorResponse:
+    properties:
+      message:
+        type: string
+    type: object
+host: localhost:8081
+info:
+  contact: {}
+  description: Parcel tracking service
+  title: Delivery Tracker API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Авторизация пользователей
+      parameters:
+      - description: Login request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/delivery-tracker_internal_dto.LoginUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_dto.LoginUserResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "401":
+          description: Invalid login or password
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "403":
+          description: User inactive
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "405":
+          description: Method not allowed
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+      summary: Авторизация пользователя
+      tags:
+      - auth
+  /parcels:
+    get:
+      description: Возвращает список посылок с пагинацией и фильтром по статусу
+      parameters:
+      - description: Parcel status filter
+        in: query
+        name: status
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_dto.ListParcelResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "405":
+          description: Method not allowed
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получение списка посылок
+      tags:
+      - Parcel
+    post:
+      consumes:
+      - application/json
+      description: Создаёт посылку и генерирует трек-номер
+      parameters:
+      - description: Create parcel request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/delivery-tracker_internal_dto.CreateParcelRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_dto.CreateParcelResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "405":
+          description: Method not allowed
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Создание посылки
+      tags:
+      - Parcel
+  /parcels/archive:
+    patch:
+      description: Отправляет посылку в архив
+      parameters:
+      - description: ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "404":
+          description: Not found
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "405":
+          description: Method not allowed
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Архивирует посылку
+      tags:
+      - Parcel
+  /parcels/photos:
+    post:
+      description: Добавляет фото к посылке
+      parameters:
+      - description: ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      - description: Add photo request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/delivery-tracker_internal_dto.AddPhotoRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "404":
+          description: Not found
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "405":
+          description: Method not allowed
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Добавление фото к посылке
+      tags:
+      - Parcel
+  /parcels/status:
+    patch:
+      description: Обновляет статус посылки и добавляет запись в историю
+      parameters:
+      - description: ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      - description: Change status request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/delivery-tracker_internal_dto.ChangeStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "404":
+          description: Not found
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "405":
+          description: Method not allowed
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Обновление статуса посылки
+      tags:
+      - Parcel
+  /parcels/track:
+    get:
+      description: Возвращает информацию о посылке, историю статусов и фотографии
+      parameters:
+      - description: Track number
+        in: query
+        name: track_number
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_dto.GetParcelResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "404":
+          description: Not found
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "405":
+          description: Method not allowed
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+      summary: Получение посылки по трек-номеру
+      tags:
+      - Parcel
+  /users:
+    post:
+      consumes:
+      - application/json
+      description: Создаёт пользователя
+      parameters:
+      - description: Create user request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/delivery-tracker_internal_dto.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_dto.CreateUserResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "405":
+          description: Method not allowed
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Создание пользователя
+      tags:
+      - Users
+  /users/deactivate:
+    patch:
+      description: Деактивирует пользователя по ID
+      parameters:
+      - description: User ID
+        in: query
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "404":
+          description: Not found
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "405":
+          description: Method not allowed
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Деактивация пользователя
+      tags:
+      - Users
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

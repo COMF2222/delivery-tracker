@@ -4,9 +4,10 @@ import (
 	"delivery-tracker/internal/domain"
 	"delivery-tracker/internal/repository"
 	"fmt"
+	"strconv"
+
 	"github.com/jmoiron/sqlx"
 	"golang.org/x/crypto/bcrypt"
-	"strconv"
 )
 
 type UserService struct {
@@ -52,7 +53,7 @@ func (s *UserService) Deactivate(userID, changedBy int) error {
 	if !user.IsActive {
 		return ErrUserAlreadyInactive
 	}
-	
+
 	err = s.txManager.Do(func(tx *sqlx.Tx) error {
 		oldValue := user.IsActive
 

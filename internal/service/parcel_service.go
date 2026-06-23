@@ -6,8 +6,9 @@ import (
 	"delivery-tracker/internal/repository"
 	"errors"
 	"fmt"
-	"github.com/jmoiron/sqlx"
 	"strconv"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type ParcelService struct {

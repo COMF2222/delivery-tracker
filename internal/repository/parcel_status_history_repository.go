@@ -3,8 +3,9 @@ package repository
 import (
 	"delivery-tracker/internal/domain"
 	"fmt"
-	"github.com/jmoiron/sqlx"
 	"log"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type ParcelStatusHistoryRepository struct {

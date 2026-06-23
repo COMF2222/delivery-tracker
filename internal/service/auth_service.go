@@ -5,8 +5,9 @@ import (
 	"delivery-tracker/internal/domain"
 	"delivery-tracker/internal/repository"
 	"fmt"
-	"golang.org/x/crypto/bcrypt"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthService struct {
