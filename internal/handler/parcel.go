@@ -5,6 +5,7 @@ import (
 	"delivery-tracker/internal/domain"
 	"delivery-tracker/internal/dto"
 	"delivery-tracker/internal/repository"
+	"delivery-tracker/internal/request"
 	"delivery-tracker/internal/response"
 	"delivery-tracker/internal/service"
 	"encoding/json"
@@ -162,19 +163,9 @@ func (h *ParcelHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := r.URL.Query().Get("id")
-	if id == "" {
-		response.Error(w, "id cannot be empty", http.StatusBadRequest)
-		return
-	}
-
-	intId, err := strconv.Atoi(id)
+	parcelID, err := request.PositiveIntQuery(r, "id")
 	if err != nil {
-		response.Error(w, "failed convert id to int", http.StatusBadRequest)
-		return
-	}
-	if intId <= 0 {
-		response.Error(w, "id must be positive", http.StatusBadRequest)
+		response.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -196,7 +187,7 @@ func (h *ParcelHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = h.parcelService.ChangeStatus(intId, req.Status, req.Location, userID); err != nil {
+	if err = h.parcelService.ChangeStatus(parcelID, req.Status, req.Location, userID); err != nil {
 		if errors.Is(err, service.ErrInvalidStatusTransition) {
 			response.Error(w, "cannot skip statuses", http.StatusBadRequest)
 			return
@@ -234,20 +225,9 @@ func (h *ParcelHandler) AddPhoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := r.URL.Query().Get("id")
-
-	if id == "" {
-		response.Error(w, "id cannot be empty", http.StatusBadRequest)
-		return
-	}
-
-	intId, err := strconv.Atoi(id)
+	parcelID, err := request.PositiveIntQuery(r, "id")
 	if err != nil {
-		response.Error(w, "failed convert id to int", http.StatusBadRequest)
-		return
-	}
-	if intId <= 0 {
-		response.Error(w, "id must be positive", http.StatusBadRequest)
+		response.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -263,7 +243,7 @@ func (h *ParcelHandler) AddPhoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = h.parcelService.AddPhoto(intId, req.FilePath); err != nil {
+	if err = h.parcelService.AddPhoto(parcelID, req.FilePath); err != nil {
 		if errors.Is(err, repository.ErrParcelNotFound) {
 			response.Error(w, "parcel not found", http.StatusNotFound)
 			return
@@ -296,19 +276,9 @@ func (h *ParcelHandler) Archive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := r.URL.Query().Get("id")
-	if id == "" {
-		response.Error(w, "id cannot be empty", http.StatusBadRequest)
-		return
-	}
-
-	intId, err := strconv.Atoi(id)
+	parcelID, err := request.PositiveIntQuery(r, "id")
 	if err != nil {
-		response.Error(w, "failed convert id to int", http.StatusBadRequest)
-		return
-	}
-	if intId <= 0 {
-		response.Error(w, "id must be positive", http.StatusBadRequest)
+		response.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -318,7 +288,7 @@ func (h *ParcelHandler) Archive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = h.parcelService.Archive(intId, userID); err != nil {
+	if err = h.parcelService.Archive(parcelID, userID); err != nil {
 		if errors.Is(err, repository.ErrParcelNotFound) {
 			response.Error(w, "parcel not found", http.StatusNotFound)
 			return

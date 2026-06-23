@@ -27,6 +27,7 @@ func RegisterRoutes(deps *Dependencies) {
 	http.HandleFunc("/api/v1/parcels/track", deps.ParcelHandler.GetByTrackNumber)
 
 	http.HandleFunc("/api/v1/users", protect(deps.UserHandler.Create, domain.RoleAdmin))
+	http.HandleFunc("/api/v1/users/me", deps.AuthMiddleware.RequireAuth(deps.UserHandler.GetMe))
 	http.HandleFunc("/api/v1/users/deactivate", protect(deps.UserHandler.Deactivate, domain.RoleAdmin))
 
 	http.HandleFunc("/api/v1/auth/login", deps.AuthHandler.Login)

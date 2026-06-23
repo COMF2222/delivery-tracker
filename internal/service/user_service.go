@@ -4,10 +4,9 @@ import (
 	"delivery-tracker/internal/domain"
 	"delivery-tracker/internal/repository"
 	"fmt"
-	"strconv"
-
 	"github.com/jmoiron/sqlx"
 	"golang.org/x/crypto/bcrypt"
+	"strconv"
 )
 
 type UserService struct {
@@ -82,4 +81,17 @@ func (s *UserService) Deactivate(userID, changedBy int) error {
 	}
 
 	return nil
+}
+
+func (s *UserService) GetMe(userID int) (*domain.User, error) {
+	user, err := s.userRepo.GetByID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("get me: %w", err)
+	}
+
+	if !user.IsActive {
+		return nil, ErrUserInactive
+	}
+
+	return user, nil
 }

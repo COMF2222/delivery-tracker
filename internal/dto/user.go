@@ -24,6 +24,12 @@ type LoginUserResponse struct {
 	Token string `json:"token"`
 }
 
+type GetMeResponse struct {
+	ID    int         `json:"id"`
+	Login string      `json:"login"`
+	Role  domain.Role `json:"role"`
+}
+
 func (r CreateUserRequest) Validate() error {
 	if r.Login == "" {
 		return fmt.Errorf("login cannot be empty")
