@@ -282,3 +282,31 @@ func (r *ParcelRepository) ListByStatus(status domain.Status, limit, offset int)
 
 	return parcels, nil
 }
+
+func (r *ParcelRepository) Count() (int, error) {
+	var count int
+	query := `SELECT COUNT(*) FROM parcels`
+
+	err := r.db.QueryRowx(query).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("count parcels: %w", err)
+	}
+
+	return count, nil
+}
+
+func (r *ParcelRepository) CountByStatus(status domain.Status) (int, error) {
+	var count int
+	query := `SELECT 
+		COUNT(*) 
+	FROM parcels p
+	JOIN statuses s ON p.current_status = s.id
+	WHERE s.status = $1`
+
+	err := r.db.QueryRowx(query, status).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("count parcels with status: %w", err)
+	}
+
+	return count, nil
+}

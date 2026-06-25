@@ -70,6 +70,15 @@ definitions:
       id:
         type: integer
     type: object
+  delivery-tracker_internal_dto.GetMeResponse:
+    properties:
+      id:
+        type: integer
+      login:
+        type: string
+      role:
+        $ref: '#/definitions/delivery-tracker_internal_domain.Role'
+    type: object
   delivery-tracker_internal_dto.GetParcelResponse:
     properties:
       current_location:
@@ -100,6 +109,8 @@ definitions:
       limit:
         type: integer
       page:
+        type: integer
+      total:
         type: integer
     type: object
   delivery-tracker_internal_dto.LoginUserRequest:
@@ -541,6 +552,41 @@ paths:
       security:
       - BearerAuth: []
       summary: Деактивация пользователя
+      tags:
+      - Users
+  /users/me:
+    get:
+      description: Возвращает информацию о текущем пользователе
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_dto.GetMeResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "404":
+          description: Not found
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "405":
+          description: Method not allowed
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить информацию о себе
       tags:
       - Users
 securityDefinitions:

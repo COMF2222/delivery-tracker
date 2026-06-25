@@ -345,7 +345,7 @@ func (h *ParcelHandler) List(w http.ResponseWriter, r *http.Request) {
 	} else {
 		page, err = strconv.Atoi(pageStr)
 		if err != nil {
-			response.Error(w, "failed to atoi page", http.StatusBadRequest)
+			response.Error(w, "invalid page", http.StatusBadRequest)
 			return
 		}
 	}
@@ -355,12 +355,12 @@ func (h *ParcelHandler) List(w http.ResponseWriter, r *http.Request) {
 	} else {
 		limit, err = strconv.Atoi(limitStr)
 		if err != nil {
-			response.Error(w, "failed to atoi limit", http.StatusBadRequest)
+			response.Error(w, "invalid limit", http.StatusBadRequest)
 			return
 		}
 	}
 
-	parcels, err := h.parcelService.List(status, page, limit)
+	parcels, total, err := h.parcelService.List(status, page, limit)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidLimit) {
 			response.Error(w, "invalid limit", http.StatusBadRequest)
@@ -392,6 +392,7 @@ func (h *ParcelHandler) List(w http.ResponseWriter, r *http.Request) {
 		Items: listItemResp,
 		Page:  page,
 		Limit: limit,
+		Total: total,
 	}
 
 	response.JSON(w, http.StatusOK, listResp)

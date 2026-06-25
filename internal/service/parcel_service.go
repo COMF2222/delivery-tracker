@@ -221,17 +221,17 @@ func (s *ParcelService) Archive(parcelID, changedBy int) error {
 	return nil
 }
 
-func (s *ParcelService) List(status domain.Status, page, limit int) ([]domain.Parcel, error) {
+func (s *ParcelService) List(status domain.Status, page, limit int) ([]domain.Parcel, int, error) {
 	if page < 1 {
-		return nil, ErrInvalidPage
+		return nil, 0, ErrInvalidPage
 	}
 
 	if limit < 1 {
-		return nil, ErrInvalidLimit
+		return nil, 0, ErrInvalidLimit
 	}
 
 	if limit > 100 {
-		return nil, ErrInvalidLimit
+		return nil, 0, ErrInvalidLimit
 	}
 
 	offset := (page - 1) * limit
@@ -239,14 +239,26 @@ func (s *ParcelService) List(status domain.Status, page, limit int) ([]domain.Pa
 	if status == "" {
 		parcels, err := s.parcelRepo.List(limit, offset)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get parcel list: %w", err)
+			return nil, 0, fmt.Errorf("failed to get parcel list: %w", err)
 		}
-		return parcels, nil
+
+		total, err := s.parcelRepo.Count()
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to count parcels: %w", err)
+		}
+
+		return parcels, total, nil
 	}
 
 	parcels, err := s.parcelRepo.ListByStatus(status, limit, offset)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get parcel list by status: %w", err)
+		return nil, 0, fmt.Errorf("failed to get parcel list by status: %w", err)
 	}
-	return parcels, nil
+
+	total, err := s.parcelRepo.CountByStatus(status)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count parcels: %w", err)
+	}
+
+	return parcels, total, nil
 }

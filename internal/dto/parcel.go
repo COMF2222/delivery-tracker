@@ -62,6 +62,7 @@ type ListParcelResponse struct {
 	Items []ParcelListItemResponse `json:"items"`
 	Page  int                      `json:"page"`
 	Limit int                      `json:"limit"`
+	Total int                      `json:"total"`
 }
 
 func (r CreateParcelRequest) Validate() error {
