@@ -1,6 +1,3 @@
 .env
 .idea
-.vscode
-tmp
-bin
-uploads/
+./uploads/

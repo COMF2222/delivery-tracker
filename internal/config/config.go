@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -10,6 +11,7 @@ import (
 
 type Config struct {
 	Database DatabaseConfig
+	Redis    RedisConfig
 	Server   ServerConfig
 	JWT      JWTConfig
 }
@@ -20,6 +22,13 @@ type DatabaseConfig struct {
 	Name     string
 	User     string
 	Password string
+}
+
+type RedisConfig struct {
+	Host     string
+	Port     string
+	Password string
+	DB       int
 }
 
 type ServerConfig struct {
@@ -58,6 +67,31 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 
+	redisHost, err := getRequiredEnv("REDIS_HOST")
+	if err != nil {
+		return Config{}, err
+	}
+
+	redisPort, err := getRequiredEnv("REDIS_PORT")
+	if err != nil {
+		return Config{}, err
+	}
+
+	redisPassword, err := getRequiredEnv("REDIS_PASSWORD")
+	if err != nil {
+		return Config{}, err
+	}
+
+	redisDBStr, err := getRequiredEnv("REDIS_DB")
+	if err != nil {
+		return Config{}, err
+	}
+
+	redisDB, err := strconv.Atoi(redisDBStr)
+	if err != nil {
+		return Config{}, err
+	}
+
 	serverPort, err := getRequiredEnv("SERVER_PORT")
 	if err != nil {
 		return Config{}, err
@@ -80,6 +114,13 @@ func Load() (Config, error) {
 		Password: dbPassword,
 	}
 
+	redis := RedisConfig{
+		Host:     redisHost,
+		Port:     redisPort,
+		Password: redisPassword,
+		DB:       redisDB,
+	}
+
 	server := ServerConfig{Port: serverPort}
 
 	parseTTL, err := time.ParseDuration(jwtTTL)
@@ -91,6 +132,7 @@ func Load() (Config, error) {
 
 	config := Config{
 		Database: db,
+		Redis:    redis,
 		Server:   server,
 		JWT:      jwt,
 	}
