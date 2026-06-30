@@ -34,7 +34,7 @@ func NewAuthHandler(authService *service.AuthService) *AuthHandler {
 //	@Failure		500		{object}	response.ErrorResponse	"Internal server error"
 //	@Router			/auth/login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
+	if r.Method != http.MethodPost {
 		response.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}

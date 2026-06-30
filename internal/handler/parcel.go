@@ -10,8 +10,15 @@ import (
 	"delivery-tracker/internal/service"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
+	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
+	"time"
 )
 
 type ParcelHandler struct {
@@ -39,7 +46,7 @@ func NewParcelHandler(parcelService *service.ParcelService) *ParcelHandler {
 //	@Security		BearerAuth
 //	@Router			/parcels [post]
 func (h *ParcelHandler) CreateParcel(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
+	if r.Method != http.MethodPost {
 		response.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -90,7 +97,7 @@ func (h *ParcelHandler) CreateParcel(w http.ResponseWriter, r *http.Request) {
 //	@Failure		500				{object}	response.ErrorResponse	"Internal server error"
 //	@Router			/parcels/track [get]
 func (h *ParcelHandler) GetByTrackNumber(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
+	if r.Method != http.MethodGet {
 		response.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -158,7 +165,7 @@ func (h *ParcelHandler) GetByTrackNumber(w http.ResponseWriter, r *http.Request)
 //	@Security		BearerAuth
 //	@Router			/parcels/status [patch]
 func (h *ParcelHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "PATCH" {
+	if r.Method != http.MethodPatch {
 		response.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -205,22 +212,25 @@ func (h *ParcelHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 
 // AddPhoto
 //
-//	@Summary		Добавление фото к посылке
-//	@Description	Добавляет фото к посылке
-//	@Tags			Parcel
-//	@Produce		json
-//	@Param			id		query	int					true	"ID"
-//	@Param			request	body	dto.AddPhotoRequest	true	"Add photo request"
-//	@Success		204		"No Content"
-//	@Failure		400		{object}	response.ErrorResponse	"Bad request"
-//	@Failure		401		{object}	response.ErrorResponse	"Unauthorized"
-//	@Failure		404		{object}	response.ErrorResponse	"Not found"
-//	@Failure		405		{object}	response.ErrorResponse	"Method not allowed"
-//	@Failure		500		{object}	response.ErrorResponse	"Internal server error"
-//	@Security		BearerAuth
-//	@Router			/parcels/photos [post]
+// @Summary Добавление фото к посылке
+// @Description Загружает фото посылки и сохраняет путь к файлу
+// @Tags Parcel
+// @Accept multipart/form-data
+// @Produce json
+// @Param id query int true "Parcel ID"
+// @Param file formData file true "Photo file"
+// @Success 204 "No Content"
+// @Failure 400 {object} response.ErrorResponse "Bad request"
+// @Failure 401 {object} response.ErrorResponse "Unauthorized"
+// @Failure 403 {object} response.ErrorResponse "Forbidden"
+// @Failure 404 {object} response.ErrorResponse "Not found"
+// @Failure 405 {object} response.ErrorResponse "Method not allowed"
+// @Failure 413 {object} response.ErrorResponse "File too large"
+// @Failure 500 {object} response.ErrorResponse "Internal server error"
+// @Security BearerAuth
+// @Router /parcels/photos [post]
 func (h *ParcelHandler) AddPhoto(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
+	if r.Method != http.MethodPost {
 		response.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -231,19 +241,15 @@ func (h *ParcelHandler) AddPhoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req dto.AddPhotoRequest
+	r.Body = http.MaxBytesReader(w, r.Body, 5<<20)
 
-	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, "failed to decode request", http.StatusBadRequest)
+	filePath, err := saveUploadedFile(r)
+	if err != nil {
+		response.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if req.FilePath == "" {
-		response.Error(w, "file path cannot be empty", http.StatusBadRequest)
-		return
-	}
-
-	if err = h.parcelService.AddPhoto(parcelID, req.FilePath); err != nil {
+	if err = h.parcelService.AddPhoto(parcelID, filePath); err != nil {
 		if errors.Is(err, repository.ErrParcelNotFound) {
 			response.Error(w, "parcel not found", http.StatusNotFound)
 			return
@@ -253,6 +259,58 @@ func (h *ParcelHandler) AddPhoto(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+var allowedExtensions = map[string]bool{
+	".jpg":  true,
+	".jpeg": true,
+	".png":  true,
+}
+
+func saveUploadedFile(r *http.Request) (string, error) {
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		return "", fmt.Errorf("read file")
+	}
+	defer func() {
+		if err := file.Close(); err != nil {
+			log.Printf("failed to close file: %v", err)
+		}
+	}()
+
+	if header.Filename == "" {
+		return "", fmt.Errorf("empty file name")
+	}
+
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	if !allowedExtensions[ext] {
+		return "", fmt.Errorf("unsupported file extension: %s", ext)
+	}
+
+	if err = os.MkdirAll("uploads", 0755); err != nil {
+		return "", fmt.Errorf("make dir: %w", err)
+	}
+
+	fileName := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
+	filePath := filepath.Join("uploads", fileName)
+	filePath = filepath.ToSlash(filePath)
+
+	dst, err := os.Create(filePath)
+	if err != nil {
+		return "", fmt.Errorf("create file: %w", err)
+	}
+	defer func() {
+		if err := dst.Close(); err != nil {
+			log.Printf("failed to close file: %v", err)
+		}
+	}()
+
+	_, err = io.Copy(dst, file)
+	if err != nil {
+		return "", fmt.Errorf("file copy: %w", err)
+	}
+
+	return filePath, nil
 }
 
 // Archive
@@ -271,7 +329,7 @@ func (h *ParcelHandler) AddPhoto(w http.ResponseWriter, r *http.Request) {
 //	@Security		BearerAuth
 //	@Router			/parcels/archive [patch]
 func (h *ParcelHandler) Archive(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "PATCH" {
+	if r.Method != http.MethodPatch {
 		response.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -326,7 +384,7 @@ func (h *ParcelHandler) Archive(w http.ResponseWriter, r *http.Request) {
 //	@Security		BearerAuth
 //	@Router			/parcels [get]
 func (h *ParcelHandler) List(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
+	if r.Method != http.MethodGet {
 		response.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}

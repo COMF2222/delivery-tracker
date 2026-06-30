@@ -37,7 +37,7 @@ func NewUserHandler(userService *service.UserService) *UserHandler {
 //	@Security		BearerAuth
 //	@Router			/users [post]
 func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
+	if r.Method != http.MethodPost {
 		response.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -82,7 +82,7 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 //	@Security		BearerAuth
 //	@Router			/users/deactivate [patch]
 func (h *UserHandler) Deactivate(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "PATCH" {
+	if r.Method != http.MethodPatch {
 		response.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}

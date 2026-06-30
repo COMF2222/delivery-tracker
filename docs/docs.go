@@ -289,7 +289,10 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Добавляет фото к посылке",
+                "description": "Загружает фото посылки и сохраняет путь к файлу",
+                "consumes": [
+                    "multipart/form-data"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -300,19 +303,17 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "ID",
+                        "description": "Parcel ID",
                         "name": "id",
                         "in": "query",
                         "required": true
                     },
                     {
-                        "description": "Add photo request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/delivery-tracker_internal_dto.AddPhotoRequest"
-                        }
+                        "type": "file",
+                        "description": "Photo file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -331,6 +332,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/delivery-tracker_internal_response.ErrorResponse"
                         }
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/delivery-tracker_internal_response.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Not found",
                         "schema": {
@@ -339,6 +346,12 @@ const docTemplate = `{
                     },
                     "405": {
                         "description": "Method not allowed",
+                        "schema": {
+                            "$ref": "#/definitions/delivery-tracker_internal_response.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "File too large",
                         "schema": {
                             "$ref": "#/definitions/delivery-tracker_internal_response.ErrorResponse"
                         }
@@ -699,14 +712,6 @@ const docTemplate = `{
                 "StatusArrived",
                 "StatusDelivered"
             ]
-        },
-        "delivery-tracker_internal_dto.AddPhotoRequest": {
-            "type": "object",
-            "properties": {
-                "file_path": {
-                    "type": "string"
-                }
-            }
         },
         "delivery-tracker_internal_dto.ChangeStatusRequest": {
             "type": "object",

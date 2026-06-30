@@ -26,11 +26,6 @@ definitions:
     - StatusCustoms
     - StatusArrived
     - StatusDelivered
-  delivery-tracker_internal_dto.AddPhotoRequest:
-    properties:
-      file_path:
-        type: string
-    type: object
   delivery-tracker_internal_dto.ChangeStatusRequest:
     properties:
       location:
@@ -344,19 +339,20 @@ paths:
       - Parcel
   /parcels/photos:
     post:
-      description: Добавляет фото к посылке
+      consumes:
+      - multipart/form-data
+      description: Загружает фото посылки и сохраняет путь к файлу
       parameters:
-      - description: ID
+      - description: Parcel ID
         in: query
         name: id
         required: true
         type: integer
-      - description: Add photo request
-        in: body
-        name: request
+      - description: Photo file
+        in: formData
+        name: file
         required: true
-        schema:
-          $ref: '#/definitions/delivery-tracker_internal_dto.AddPhotoRequest'
+        type: file
       produces:
       - application/json
       responses:
@@ -370,12 +366,20 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
         "404":
           description: Not found
           schema:
             $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
         "405":
           description: Method not allowed
+          schema:
+            $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
+        "413":
+          description: File too large
           schema:
             $ref: '#/definitions/delivery-tracker_internal_response.ErrorResponse'
         "500":

@@ -45,10 +45,6 @@ type ChangeStatusRequest struct {
 	Location string        `json:"location"`
 }
 
-type AddPhotoRequest struct {
-	FilePath string `json:"file_path"`
-}
-
 type ParcelListItemResponse struct {
 	ID              int           `json:"id"`
 	TrackNumber     string        `json:"track_number"`
