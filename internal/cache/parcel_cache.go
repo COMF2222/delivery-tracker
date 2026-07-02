@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/redis/go-redis/v9"
-	"log"
 	"time"
 )
 
@@ -39,8 +38,6 @@ func (c *ParcelCache) SetByTrack(
 		return fmt.Errorf("redis set: %w", err)
 	}
 
-	log.Println("cache hit set")
-
 	return nil
 }
 
@@ -57,8 +54,6 @@ func (c *ParcelCache) GetByTrack(ctx context.Context, trackNumber string) (*doma
 	if err = json.Unmarshal([]byte(val), &parcel); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal: %w", err)
 	}
-
-	log.Println("cache hit get")
 
 	return &parcel, nil
 }

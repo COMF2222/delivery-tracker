@@ -194,7 +194,7 @@ func (h *ParcelHandler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = h.parcelService.ChangeStatus(parcelID, req.Status, req.Location, userID); err != nil {
+	if err = h.parcelService.ChangeStatus(r.Context(), parcelID, req.Status, req.Location, userID); err != nil {
 		if errors.Is(err, service.ErrInvalidStatusTransition) {
 			response.Error(w, "cannot skip statuses", http.StatusBadRequest)
 			return
@@ -249,7 +249,7 @@ func (h *ParcelHandler) AddPhoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = h.parcelService.AddPhoto(parcelID, filePath); err != nil {
+	if err = h.parcelService.AddPhoto(r.Context(), parcelID, filePath); err != nil {
 		if errors.Is(err, repository.ErrParcelNotFound) {
 			response.Error(w, "parcel not found", http.StatusNotFound)
 			return
@@ -346,7 +346,7 @@ func (h *ParcelHandler) Archive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = h.parcelService.Archive(parcelID, userID); err != nil {
+	if err = h.parcelService.Archive(r.Context(), parcelID, userID); err != nil {
 		if errors.Is(err, repository.ErrParcelNotFound) {
 			response.Error(w, "parcel not found", http.StatusNotFound)
 			return

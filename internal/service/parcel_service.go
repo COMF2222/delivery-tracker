@@ -119,7 +119,12 @@ func (s *ParcelService) GetByTrackNumber(ctx context.Context, trackNumber string
 	return parcelDetails, nil
 }
 
-func (s *ParcelService) ChangeStatus(parcelID int, newStatus domain.Status, location string, changedBy int) error {
+func (s *ParcelService) ChangeStatus(
+	ctx context.Context,
+	parcelID int,
+	newStatus domain.Status,
+	location string,
+	changedBy int) error {
 	parcel, err := s.parcelRepo.GetByID(parcelID)
 	if err != nil {
 		return fmt.Errorf("failed to get parcel by ID(%d): %w", parcelID, err)
@@ -178,11 +183,16 @@ func (s *ParcelService) ChangeStatus(parcelID int, newStatus domain.Status, loca
 		return fmt.Errorf("change parcel status transaction: %w", err)
 	}
 
+	err = s.parcelCache.DeleteByTrack(ctx, parcel.TrackNumber)
+	if err != nil {
+		log.Printf("failed to delete cache by track: %v", err)
+	}
+
 	return nil
 }
 
-func (s *ParcelService) AddPhoto(parcelID int, filePath string) error {
-	_, err := s.parcelRepo.GetByID(parcelID)
+func (s *ParcelService) AddPhoto(ctx context.Context, parcelID int, filePath string) error {
+	parcel, err := s.parcelRepo.GetByID(parcelID)
 	if err != nil {
 		return fmt.Errorf("get parcel by id: %w", err)
 	}
@@ -197,10 +207,15 @@ func (s *ParcelService) AddPhoto(parcelID int, filePath string) error {
 		return fmt.Errorf("create parcel photo: %w", err)
 	}
 
+	err = s.parcelCache.DeleteByTrack(ctx, parcel.TrackNumber)
+	if err != nil {
+		log.Printf("failed to delete cache by track: %v", err)
+	}
+
 	return nil
 }
 
-func (s *ParcelService) Archive(parcelID, changedBy int) error {
+func (s *ParcelService) Archive(ctx context.Context, parcelID, changedBy int) error {
 	parcel, err := s.parcelRepo.GetByID(parcelID)
 	if err != nil {
 		return fmt.Errorf("get parcel id: %w", err)
@@ -238,6 +253,11 @@ func (s *ParcelService) Archive(parcelID, changedBy int) error {
 
 	if err != nil {
 		return fmt.Errorf("archive parcel transaction: %w", err)
+	}
+
+	err = s.parcelCache.DeleteByTrack(ctx, parcel.TrackNumber)
+	if err != nil {
+		log.Printf("failed to delete cache by track: %v", err)
 	}
 
 	return nil
