@@ -1,6 +1,7 @@
 package app
 
 import (
+	"delivery-tracker/internal/cache"
 	"delivery-tracker/internal/config"
 	"delivery-tracker/internal/database"
 	"log"
@@ -24,7 +25,18 @@ func Run() error {
 		}
 	}()
 
-	deps := NewDependencies(db, &cfg)
+	rdb, err := cache.NewClient(cfg.Redis)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err := rdb.Close(); err != nil {
+			log.Printf("failed to close redis: %v", err)
+		}
+	}()
+
+	deps := NewDependencies(db, rdb, &cfg)
 
 	RegisterRoutes(deps)
 

@@ -1,14 +1,17 @@
 package service
 
 import (
+	"context"
+	"delivery-tracker/internal/cache"
 	"delivery-tracker/internal/domain"
 	"delivery-tracker/internal/generator"
 	"delivery-tracker/internal/repository"
 	"errors"
 	"fmt"
-	"strconv"
-
 	"github.com/jmoiron/sqlx"
+	"log"
+	"strconv"
+	"time"
 )
 
 type ParcelService struct {
@@ -18,6 +21,8 @@ type ParcelService struct {
 	historyRepo *repository.ParcelStatusHistoryRepository
 	auditRepo   *repository.AuditRepository
 
+	parcelCache *cache.ParcelCache
+
 	txManager *repository.TransactionManager
 }
 
@@ -26,6 +31,7 @@ func NewParcelService(parcelRepo *repository.ParcelRepository,
 	photoRepo *repository.ParcelPhotoRepository,
 	historyRepo *repository.ParcelStatusHistoryRepository,
 	auditRepo *repository.AuditRepository,
+	parcelCache *cache.ParcelCache,
 	txManager *repository.TransactionManager) *ParcelService {
 	return &ParcelService{
 		parcelRepo:  parcelRepo,
@@ -33,6 +39,7 @@ func NewParcelService(parcelRepo *repository.ParcelRepository,
 		photoRepo:   photoRepo,
 		historyRepo: historyRepo,
 		auditRepo:   auditRepo,
+		parcelCache: parcelCache,
 		txManager:   txManager,
 	}
 }
@@ -69,24 +76,32 @@ func (s *ParcelService) CreateParcel(parcel *domain.Parcel) error {
 	return fmt.Errorf("failed to generate unique track number after 5 attempts")
 }
 
-func (s *ParcelService) GetByTrackNumber(trackNumber string) (*domain.ParcelDetails, error) {
-	parcel, err := s.parcelRepo.GetByTrackNumber(trackNumber)
+func (s *ParcelService) GetByTrackNumber(ctx context.Context, trackNumber string) (*domain.ParcelDetails, error) {
+	cachedDetails, err := s.parcelCache.GetByTrack(ctx, trackNumber)
+	if err == nil {
+		return cachedDetails, nil
+	}
 
+	if !errors.Is(err, cache.ErrCacheMiss) {
+		log.Printf("failed to get cache by track: %v", err)
+	}
+
+	parcel, err := s.parcelRepo.GetByTrackNumber(trackNumber)
 	if err != nil {
 		return nil, fmt.Errorf("get by track number: %w", err)
 	}
 
 	parcelPhotos, err := s.photoRepo.GetByParcelID(parcel.ID)
 	if err != nil {
-		return nil, fmt.Errorf("get photo by parcel ID(%d): %w", parcel.ID, err)
+		return nil, fmt.Errorf("get photo by parcel id(%d): %w", parcel.ID, err)
 	}
 
 	parcelHistory, err := s.historyRepo.GetByParcelID(parcel.ID)
 	if err != nil {
-		return nil, fmt.Errorf("get history by parcel ID(%d): %w", parcel.ID, err)
+		return nil, fmt.Errorf("get history by parcel id(%d): %w", parcel.ID, err)
 	}
 
-	return &domain.ParcelDetails{
+	parcelDetails := &domain.ParcelDetails{
 		TrackNumber:     parcel.TrackNumber,
 		ItemName:        parcel.ItemName,
 		RecipientName:   parcel.RecipientName,
@@ -94,7 +109,14 @@ func (s *ParcelService) GetByTrackNumber(trackNumber string) (*domain.ParcelDeta
 		CurrentLocation: parcel.CurrentLocation,
 		History:         parcelHistory,
 		Photos:          parcelPhotos,
-	}, nil
+	}
+
+	err = s.parcelCache.SetByTrack(ctx, trackNumber, parcelDetails, 30*time.Minute)
+	if err != nil {
+		log.Printf("failed to cache track number: %v", err)
+	}
+
+	return parcelDetails, nil
 }
 
 func (s *ParcelService) ChangeStatus(parcelID int, newStatus domain.Status, location string, changedBy int) error {

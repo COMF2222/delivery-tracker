@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/redis/go-redis/v9"
+	"log"
 	"time"
 )
 
@@ -25,7 +26,7 @@ func parcelKey(trackNumber string) string {
 func (c *ParcelCache) SetByTrack(
 	ctx context.Context,
 	trackNumber string,
-	parcel *domain.Parcel,
+	parcel *domain.ParcelDetails,
 	ttl time.Duration) error {
 
 	data, err := json.Marshal(parcel)
@@ -38,11 +39,13 @@ func (c *ParcelCache) SetByTrack(
 		return fmt.Errorf("redis set: %w", err)
 	}
 
+	log.Println("cache hit set")
+
 	return nil
 }
 
-func (c *ParcelCache) GetByTrack(ctx context.Context, trackNumber string) (*domain.Parcel, error) {
-	var parcel domain.Parcel
+func (c *ParcelCache) GetByTrack(ctx context.Context, trackNumber string) (*domain.ParcelDetails, error) {
+	var parcel domain.ParcelDetails
 	val, err := c.client.Get(ctx, parcelKey(trackNumber)).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
@@ -54,6 +57,8 @@ func (c *ParcelCache) GetByTrack(ctx context.Context, trackNumber string) (*doma
 	if err = json.Unmarshal([]byte(val), &parcel); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal: %w", err)
 	}
+
+	log.Println("cache hit get")
 
 	return &parcel, nil
 }

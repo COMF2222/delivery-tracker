@@ -108,7 +108,7 @@ func (h *ParcelHandler) GetByTrackNumber(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	parcel, err := h.parcelService.GetByTrackNumber(trackNumber)
+	parcel, err := h.parcelService.GetByTrackNumber(r.Context(), trackNumber)
 	if err != nil {
 		if errors.Is(err, repository.ErrParcelNotFound) {
 			response.Error(w, "parcel not found", http.StatusNotFound)

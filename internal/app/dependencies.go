@@ -1,11 +1,13 @@
 package app
 
 import (
+	"delivery-tracker/internal/cache"
 	"delivery-tracker/internal/config"
 	"delivery-tracker/internal/handler"
 	"delivery-tracker/internal/middleware"
 	"delivery-tracker/internal/repository"
 	"delivery-tracker/internal/service"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -17,13 +19,14 @@ type Dependencies struct {
 	AuthMiddleware *middleware.AuthMiddleware
 }
 
-func NewDependencies(db *sqlx.DB, cfg *config.Config) *Dependencies {
+func NewDependencies(db *sqlx.DB, client *redis.Client, cfg *config.Config) *Dependencies {
 	parcelRepo := repository.NewParcelRepository(db)
 	statusRepo := repository.NewStatusRepository(db)
 	photoRepo := repository.NewParcelPhotoRepository(db)
 	historyRepo := repository.NewParcelStatusHistoryRepository(db)
 	auditRepo := repository.NewAuditRepository(db)
 	userRepo := repository.NewUserRepository(db)
+	parcelCache := cache.NewParcelCache(client)
 
 	txManager := repository.NewTransactionManager(db)
 
@@ -33,6 +36,7 @@ func NewDependencies(db *sqlx.DB, cfg *config.Config) *Dependencies {
 		photoRepo,
 		historyRepo,
 		auditRepo,
+		parcelCache,
 		txManager,
 	)
 
