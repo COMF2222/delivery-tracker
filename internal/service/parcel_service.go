@@ -15,15 +15,17 @@ import (
 )
 
 type ParcelService struct {
-	parcelRepo  *repository.ParcelRepository
-	statusRepo  *repository.StatusRepository
-	photoRepo   *repository.ParcelPhotoRepository
-	historyRepo *repository.ParcelStatusHistoryRepository
-	auditRepo   *repository.AuditRepository
+	parcelReader ParcelReader
+	parcelWriter ParcelWriter
+	parcelLister ParcelLister
 
-	parcelCache *cache.ParcelCache
+	statusRepo  StatusRepository
+	photoRepo   ParcelPhotoRepository
+	historyRepo ParcelStatusHistoryRepository
+	auditRepo   AuditRepository
 
-	txManager *repository.TransactionManager
+	parcelCache ParcelCache
+	txManager   TransactionManager
 }
 
 func NewParcelService(parcelRepo *repository.ParcelRepository,
@@ -34,13 +36,15 @@ func NewParcelService(parcelRepo *repository.ParcelRepository,
 	parcelCache *cache.ParcelCache,
 	txManager *repository.TransactionManager) *ParcelService {
 	return &ParcelService{
-		parcelRepo:  parcelRepo,
-		statusRepo:  statusRepo,
-		photoRepo:   photoRepo,
-		historyRepo: historyRepo,
-		auditRepo:   auditRepo,
-		parcelCache: parcelCache,
-		txManager:   txManager,
+		parcelReader: parcelRepo,
+		parcelWriter: parcelRepo,
+		parcelLister: parcelRepo,
+		statusRepo:   statusRepo,
+		photoRepo:    photoRepo,
+		historyRepo:  historyRepo,
+		auditRepo:    auditRepo,
+		parcelCache:  parcelCache,
+		txManager:    txManager,
 	}
 }
 
@@ -60,7 +64,7 @@ func (s *ParcelService) CreateParcel(parcel *domain.Parcel) error {
 		}
 		parcel.TrackNumber = track
 
-		err = s.parcelRepo.CreateParcel(parcel, statusID)
+		err = s.parcelWriter.CreateParcel(parcel, statusID)
 		if err == nil {
 			return nil
 		}
@@ -86,7 +90,7 @@ func (s *ParcelService) GetByTrackNumber(ctx context.Context, trackNumber string
 		log.Printf("failed to get cache by track: %v", err)
 	}
 
-	parcel, err := s.parcelRepo.GetByTrackNumber(trackNumber)
+	parcel, err := s.parcelReader.GetByTrackNumber(trackNumber)
 	if err != nil {
 		return nil, fmt.Errorf("get by track number: %w", err)
 	}
@@ -125,7 +129,7 @@ func (s *ParcelService) ChangeStatus(
 	newStatus domain.Status,
 	location string,
 	changedBy int) error {
-	parcel, err := s.parcelRepo.GetByID(parcelID)
+	parcel, err := s.parcelReader.GetByID(parcelID)
 	if err != nil {
 		return fmt.Errorf("failed to get parcel by ID(%d): %w", parcelID, err)
 	}
@@ -146,7 +150,7 @@ func (s *ParcelService) ChangeStatus(
 	}
 
 	err = s.txManager.Do(func(tx *sqlx.Tx) error {
-		if err := s.parcelRepo.UpdateStatusTx(tx, parcelID, newStatusID, location); err != nil {
+		if err := s.parcelWriter.UpdateStatusTx(tx, parcelID, newStatusID, location); err != nil {
 			return fmt.Errorf("failed to update status: %w", err)
 		}
 
@@ -192,7 +196,7 @@ func (s *ParcelService) ChangeStatus(
 }
 
 func (s *ParcelService) AddPhoto(ctx context.Context, parcelID int, filePath string) error {
-	parcel, err := s.parcelRepo.GetByID(parcelID)
+	parcel, err := s.parcelReader.GetByID(parcelID)
 	if err != nil {
 		return fmt.Errorf("get parcel by id: %w", err)
 	}
@@ -216,7 +220,7 @@ func (s *ParcelService) AddPhoto(ctx context.Context, parcelID int, filePath str
 }
 
 func (s *ParcelService) Archive(ctx context.Context, parcelID, changedBy int) error {
-	parcel, err := s.parcelRepo.GetByID(parcelID)
+	parcel, err := s.parcelReader.GetByID(parcelID)
 	if err != nil {
 		return fmt.Errorf("get parcel id: %w", err)
 	}
@@ -231,7 +235,7 @@ func (s *ParcelService) Archive(ctx context.Context, parcelID, changedBy int) er
 
 	err = s.txManager.Do(func(tx *sqlx.Tx) error {
 		oldValue := parcel.IsArchived
-		if err := s.parcelRepo.ArchiveTx(tx, parcelID); err != nil {
+		if err := s.parcelWriter.ArchiveTx(tx, parcelID); err != nil {
 			return fmt.Errorf("failed to archive parcel: %w", err)
 		}
 
@@ -279,12 +283,12 @@ func (s *ParcelService) List(status domain.Status, page, limit int) ([]domain.Pa
 	offset := (page - 1) * limit
 
 	if status == "" {
-		parcels, err := s.parcelRepo.List(limit, offset)
+		parcels, err := s.parcelLister.List(limit, offset)
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to get parcel list: %w", err)
 		}
 
-		total, err := s.parcelRepo.Count()
+		total, err := s.parcelLister.Count()
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to count parcels: %w", err)
 		}
@@ -292,12 +296,12 @@ func (s *ParcelService) List(status domain.Status, page, limit int) ([]domain.Pa
 		return parcels, total, nil
 	}
 
-	parcels, err := s.parcelRepo.ListByStatus(status, limit, offset)
+	parcels, err := s.parcelLister.ListByStatus(status, limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to get parcel list by status: %w", err)
 	}
 
-	total, err := s.parcelRepo.CountByStatus(status)
+	total, err := s.parcelLister.CountByStatus(status)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count parcels: %w", err)
 	}
