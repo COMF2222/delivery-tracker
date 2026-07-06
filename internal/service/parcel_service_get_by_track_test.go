@@ -6,90 +6,14 @@ import (
 	"delivery-tracker/internal/domain"
 	"delivery-tracker/internal/repository"
 	"errors"
-	"github.com/jmoiron/sqlx"
 	"testing"
-	"time"
 )
-
-type mockParcelCache struct {
-	getResult *domain.ParcelDetails
-	getErr    error
-	setErr    error
-
-	getCalled bool
-	setCalled bool
-}
-
-type mockParcelRepo struct {
-	getByTrackCalled bool
-
-	getResult *domain.Parcel
-	getErr    error
-}
-
-type mockParcelPhotoRepo struct {
-	getByIdCalled bool
-
-	getResult []domain.ParcelPhoto
-	getErr    error
-}
-
-type mockParcelHistoryRepo struct {
-	getByIdCalled bool
-
-	getResult []domain.ParcelStatusHistory
-	getErr    error
-}
-
-func (m *mockParcelCache) GetByTrack(ctx context.Context, trackNumber string) (*domain.ParcelDetails, error) {
-	m.getCalled = true
-	return m.getResult, m.getErr
-}
-
-func (m *mockParcelCache) SetByTrack(ctx context.Context, trackNumber string, parcel *domain.ParcelDetails, ttl time.Duration) error {
-	m.setCalled = true
-	return m.setErr
-}
-
-func (m *mockParcelCache) DeleteByTrack(ctx context.Context, trackNumber string) error {
-	return nil
-}
-
-func (m *mockParcelRepo) GetByTrackNumber(trackNumber string) (*domain.Parcel, error) {
-	m.getByTrackCalled = true
-	return m.getResult, m.getErr
-}
-
-func (m *mockParcelRepo) GetByID(id int) (*domain.Parcel, error) {
-	return nil, errors.New("GetByID should not be called")
-}
-
-func (m *mockParcelPhotoRepo) GetByParcelID(parcelID int) ([]domain.ParcelPhoto, error) {
-	m.getByIdCalled = true
-	return m.getResult, m.getErr
-}
-
-func (m *mockParcelPhotoRepo) Create(photo *domain.ParcelPhoto) error {
-	return errors.New("create should not be called")
-}
-
-func (m *mockParcelHistoryRepo) GetByParcelID(parcelID int) ([]domain.ParcelStatusHistory, error) {
-	m.getByIdCalled = true
-	return m.getResult, m.getErr
-}
-
-func (m *mockParcelHistoryRepo) CreateTx(tx *sqlx.Tx, history *domain.ParcelStatusHistory, oldStatusID int, newStatusID int) error {
-	return errors.New("createTx should not be called")
-}
 
 func TestParcelService_GetByTrackNumber_CacheHit(t *testing.T) {
 	trackNumber := "Q4P405SHH8EG"
 
 	mockCache := &mockParcelCache{
-		getResult: &domain.ParcelDetails{
-			TrackNumber: trackNumber,
-			ItemName:    "Reina Petite Ring",
-		},
+		getResult: testParcelDetails(trackNumber),
 	}
 
 	mockReader := &mockParcelRepo{}
@@ -127,34 +51,11 @@ func TestParcelService_GetByTrackNumber_CacheMiss(t *testing.T) {
 		getErr: cache.ErrCacheMiss,
 	}
 
-	mockReader := &mockParcelRepo{
-		getResult: &domain.Parcel{
-			ID:            1,
-			TrackNumber:   "Q4P405SHH8EG",
-			ItemName:      "Reina Petite Ring",
-			RecipientName: "Иван",
-			CurrentStatus: domain.StatusCreated,
-		},
-	}
+	mockReader := &mockParcelRepo{getResult: testParcel(domain.StatusCreated)}
 
-	mockPhoto := &mockParcelPhotoRepo{
-		getResult: []domain.ParcelPhoto{
-			{ID: 1, ParcelID: 1, FilePath: "/uploads/__1231132.jpg"},
-		},
-	}
+	mockPhoto := &mockParcelPhotoRepo{getResult: testPhotos()}
 
-	mockHistory := &mockParcelHistoryRepo{
-		getResult: []domain.ParcelStatusHistory{
-			{
-				ID:        1,
-				ParcelID:  1,
-				OldStatus: nil,
-				NewStatus: domain.StatusPurchased,
-				Location:  "loc",
-				ChangedBy: 1,
-			},
-		},
-	}
+	mockHistory := &mockParcelHistoryRepo{getResult: testHistory()}
 
 	svc := ParcelService{
 		parcelReader: mockReader,
@@ -205,34 +106,11 @@ func TestParcelService_GetByTrackNumber_CacheSetError(t *testing.T) {
 		setErr: setErr,
 	}
 
-	mockReader := &mockParcelRepo{
-		getResult: &domain.Parcel{
-			ID:            1,
-			TrackNumber:   "Q4P405SHH8EG",
-			ItemName:      "Reina Petite Ring",
-			RecipientName: "Иван",
-			CurrentStatus: domain.StatusCreated,
-		},
-	}
+	mockReader := &mockParcelRepo{getResult: testParcel(domain.StatusCreated)}
 
-	mockPhoto := &mockParcelPhotoRepo{
-		getResult: []domain.ParcelPhoto{
-			{ID: 1, ParcelID: 1, FilePath: "/uploads/__1231132.jpg"},
-		},
-	}
+	mockPhoto := &mockParcelPhotoRepo{getResult: testPhotos()}
 
-	mockHistory := &mockParcelHistoryRepo{
-		getResult: []domain.ParcelStatusHistory{
-			{
-				ID:        1,
-				ParcelID:  1,
-				OldStatus: nil,
-				NewStatus: domain.StatusPurchased,
-				Location:  "loc",
-				ChangedBy: 1,
-			},
-		},
-	}
+	mockHistory := &mockParcelHistoryRepo{getResult: testHistory()}
 
 	svc := ParcelService{
 		parcelReader: mockReader,
@@ -252,7 +130,7 @@ func TestParcelService_GetByTrackNumber_CacheSetError(t *testing.T) {
 		}
 
 		if !mockCache.setCalled {
-			t.Fatal("expected cache ParcelCache.SetByTrack to be called")
+			t.Fatal("expected ParcelCache.SetByTrack to be called after cache miss")
 		}
 
 		if !mockReader.getByTrackCalled {
@@ -291,7 +169,7 @@ func TestParcelService_GetByTrackNumber_RepoError(t *testing.T) {
 		parcelCache:  mockCache,
 	}
 
-	t.Run("parcel repo error", func(t *testing.T) {
+	t.Run("parcel not found error", func(t *testing.T) {
 		_, err := svc.GetByTrackNumber(context.Background(), trackNumber)
 		if !errors.Is(err, repository.ErrParcelNotFound) {
 			t.Fatalf("got %v, want ErrNotFound", err)
@@ -328,15 +206,7 @@ func TestParcelService_GetByTrackNumber_PhotoRepoError(t *testing.T) {
 		getErr: cache.ErrCacheMiss,
 	}
 
-	mockReader := &mockParcelRepo{
-		getResult: &domain.Parcel{
-			ID:            1,
-			TrackNumber:   "Q4P405SHH8EG",
-			ItemName:      "Reina Petite Ring",
-			RecipientName: "Иван",
-			CurrentStatus: domain.StatusCreated,
-		},
-	}
+	mockReader := &mockParcelRepo{getResult: testParcel(domain.StatusCreated)}
 
 	mockPhoto := &mockParcelPhotoRepo{
 		getErr: photoErr,
@@ -388,21 +258,9 @@ func TestParcelService_GetByTrackNumber_HistoryRepoError(t *testing.T) {
 		getErr: cache.ErrCacheMiss,
 	}
 
-	mockReader := &mockParcelRepo{
-		getResult: &domain.Parcel{
-			ID:            1,
-			TrackNumber:   "Q4P405SHH8EG",
-			ItemName:      "Reina Petite Ring",
-			RecipientName: "Иван",
-			CurrentStatus: domain.StatusCreated,
-		},
-	}
+	mockReader := &mockParcelRepo{getResult: testParcel(domain.StatusCreated)}
 
-	mockPhoto := &mockParcelPhotoRepo{
-		getResult: []domain.ParcelPhoto{
-			{ID: 1, ParcelID: 1, FilePath: "/uploads/__1231132.jpg"},
-		},
-	}
+	mockPhoto := &mockParcelPhotoRepo{getResult: testPhotos()}
 
 	mockHistory := &mockParcelHistoryRepo{
 		getErr: historyErr,
