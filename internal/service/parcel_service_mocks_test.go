@@ -22,12 +22,14 @@ type mockParcelCache struct {
 type mockParcelRepo struct {
 	getByTrackCalled bool
 	getByIDCalled    bool
+	updateCalled     bool
 
 	getResult     *domain.Parcel
 	getByIDResult *domain.Parcel
 
 	getErr     error
 	getByIDErr error
+	updateErr  error
 }
 
 type mockParcelPhotoRepo struct {
@@ -39,16 +41,24 @@ type mockParcelPhotoRepo struct {
 
 type mockParcelHistoryRepo struct {
 	getByIdCalled bool
+	createCalled  bool
 
 	getResult []domain.ParcelStatusHistory
 	getErr    error
+	createErr error
 }
 
 type mockStatusRepo struct {
-	getByIDCalled bool
+	getStatusIDCalled bool
 
 	getResult int
 	getErr    error
+}
+
+type mockAuditRepo struct {
+	createCalled bool
+
+	getErr error
 }
 
 type mockTransactionManager struct {
@@ -96,15 +106,39 @@ func (m *mockParcelHistoryRepo) GetByParcelID(parcelID int) ([]domain.ParcelStat
 }
 
 func (m *mockParcelHistoryRepo) CreateTx(tx *sqlx.Tx, history *domain.ParcelStatusHistory, oldStatusID int, newStatusID int) error {
-	return errors.New("createTx should not be called")
+	m.createCalled = true
+	return m.createErr
 }
 
 func (m *mockStatusRepo) GetStatusID(status domain.Status) (int, error) {
-	m.getByIDCalled = true
+	m.getStatusIDCalled = true
 	return m.getResult, m.getErr
+}
+
+func (m *mockAuditRepo) CreateTx(tx *sqlx.Tx, log *domain.AuditLog) error {
+	m.createCalled = true
+	return m.getErr
+}
+
+func (m *mockParcelRepo) UpdateStatusTx(tx *sqlx.Tx, parcelID, statusID int, location string) error {
+	m.updateCalled = true
+	return m.updateErr
+}
+
+func (m *mockParcelRepo) CreateParcel(parcel *domain.Parcel, statusID int) error {
+	return errors.New("create parcel should not be called")
+}
+
+func (m *mockParcelRepo) ArchiveTx(tx *sqlx.Tx, parcelID int) error {
+	return errors.New("archive should not be called")
 }
 
 func (m *mockTransactionManager) Do(fn func(tx *sqlx.Tx) error) error {
 	m.doCalled = true
-	return m.doErr
+
+	if m.doErr != nil {
+		return m.doErr
+	}
+
+	return fn(nil)
 }
