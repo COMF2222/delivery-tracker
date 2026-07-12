@@ -36,9 +36,11 @@ type mockParcelRepo struct {
 
 type mockParcelPhotoRepo struct {
 	getByIdCalled bool
+	createCalled  bool
 
 	getResult []domain.ParcelPhoto
 	getErr    error
+	createErr error
 }
 
 type mockParcelHistoryRepo struct {
@@ -99,7 +101,8 @@ func (m *mockParcelPhotoRepo) GetByParcelID(parcelID int) ([]domain.ParcelPhoto,
 }
 
 func (m *mockParcelPhotoRepo) Create(photo *domain.ParcelPhoto) error {
-	return errors.New("create should not be called")
+	m.createCalled = true
+	return m.createErr
 }
 
 func (m *mockParcelHistoryRepo) GetByParcelID(parcelID int) ([]domain.ParcelStatusHistory, error) {
