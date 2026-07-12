@@ -51,7 +51,7 @@ func TestParcelService_GetByTrackNumber_CacheMiss(t *testing.T) {
 		getErr: cache.ErrCacheMiss,
 	}
 
-	mockReader := &mockParcelRepo{getResult: testParcel(domain.StatusCreated)}
+	mockReader := &mockParcelRepo{getResult: testParcel(domain.StatusCreated, false)}
 
 	mockPhoto := &mockParcelPhotoRepo{getResult: testPhotos()}
 
@@ -106,7 +106,7 @@ func TestParcelService_GetByTrackNumber_CacheSetError(t *testing.T) {
 		setErr: setErr,
 	}
 
-	mockReader := &mockParcelRepo{getResult: testParcel(domain.StatusCreated)}
+	mockReader := &mockParcelRepo{getResult: testParcel(domain.StatusCreated, false)}
 
 	mockPhoto := &mockParcelPhotoRepo{getResult: testPhotos()}
 
@@ -206,7 +206,7 @@ func TestParcelService_GetByTrackNumber_PhotoRepoError(t *testing.T) {
 		getErr: cache.ErrCacheMiss,
 	}
 
-	mockReader := &mockParcelRepo{getResult: testParcel(domain.StatusCreated)}
+	mockReader := &mockParcelRepo{getResult: testParcel(domain.StatusCreated, false)}
 
 	mockPhoto := &mockParcelPhotoRepo{
 		getErr: photoErr,
@@ -258,7 +258,7 @@ func TestParcelService_GetByTrackNumber_HistoryRepoError(t *testing.T) {
 		getErr: cache.ErrCacheMiss,
 	}
 
-	mockReader := &mockParcelRepo{getResult: testParcel(domain.StatusCreated)}
+	mockReader := &mockParcelRepo{getResult: testParcel(domain.StatusCreated, false)}
 
 	mockPhoto := &mockParcelPhotoRepo{getResult: testPhotos()}
 

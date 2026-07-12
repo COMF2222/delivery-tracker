@@ -4,7 +4,7 @@ import (
 	"delivery-tracker/internal/domain"
 )
 
-func testParcel(status domain.Status) *domain.Parcel {
+func testParcel(status domain.Status, isArchived bool) *domain.Parcel {
 	return &domain.Parcel{
 		ID:              1,
 		TrackNumber:     "Q4P405SHH8EG",
@@ -12,6 +12,7 @@ func testParcel(status domain.Status) *domain.Parcel {
 		RecipientName:   "Иван",
 		CurrentStatus:   status,
 		CurrentLocation: "Berlin",
+		IsArchived:      isArchived,
 	}
 }
 

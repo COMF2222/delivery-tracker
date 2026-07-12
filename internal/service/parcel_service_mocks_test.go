@@ -22,6 +22,7 @@ type mockParcelCache struct {
 type mockParcelRepo struct {
 	getByTrackCalled bool
 	getByIDCalled    bool
+	archiveCalled    bool
 	updateCalled     bool
 
 	getResult     *domain.Parcel
@@ -30,6 +31,7 @@ type mockParcelRepo struct {
 	getErr     error
 	getByIDErr error
 	updateErr  error
+	archiveErr error
 }
 
 type mockParcelPhotoRepo struct {
@@ -58,7 +60,7 @@ type mockStatusRepo struct {
 type mockAuditRepo struct {
 	createCalled bool
 
-	getErr error
+	createErr error
 }
 
 type mockTransactionManager struct {
@@ -117,7 +119,7 @@ func (m *mockStatusRepo) GetStatusID(status domain.Status) (int, error) {
 
 func (m *mockAuditRepo) CreateTx(tx *sqlx.Tx, log *domain.AuditLog) error {
 	m.createCalled = true
-	return m.getErr
+	return m.createErr
 }
 
 func (m *mockParcelRepo) UpdateStatusTx(tx *sqlx.Tx, parcelID, statusID int, location string) error {
@@ -130,7 +132,8 @@ func (m *mockParcelRepo) CreateParcel(parcel *domain.Parcel, statusID int) error
 }
 
 func (m *mockParcelRepo) ArchiveTx(tx *sqlx.Tx, parcelID int) error {
-	return errors.New("archive should not be called")
+	m.archiveCalled = true
+	return m.archiveErr
 }
 
 func (m *mockTransactionManager) Do(fn func(tx *sqlx.Tx) error) error {

@@ -11,7 +11,7 @@ import (
 func TestChangeStatus_InvalidTransition(t *testing.T) {
 	parcelID := 1
 
-	mockReader := &mockParcelRepo{getByIDResult: testParcel(domain.StatusCreated)}
+	mockReader := &mockParcelRepo{getByIDResult: testParcel(domain.StatusCreated, false)}
 
 	mockStatus := &mockStatusRepo{}
 
@@ -54,7 +54,7 @@ func TestChangeStatus_ParcelNotFound(t *testing.T) {
 	parcelID := 2
 
 	mockReader := &mockParcelRepo{
-		getByIDResult: testParcel(domain.StatusCreated),
+		getByIDResult: testParcel(domain.StatusCreated, false),
 		getByIDErr:    repository.ErrParcelNotFound,
 	}
 
@@ -100,7 +100,7 @@ func TestChangeStatus_StatusRepoError(t *testing.T) {
 
 	statusErr := errors.New("status err")
 
-	mockReader := &mockParcelRepo{getByIDResult: testParcel(domain.StatusCreated)}
+	mockReader := &mockParcelRepo{getByIDResult: testParcel(domain.StatusCreated, false)}
 
 	mockStatus := &mockStatusRepo{getErr: statusErr}
 
@@ -144,7 +144,7 @@ func TestChangeStatus_TransactionError(t *testing.T) {
 
 	transactionErr := errors.New("transaction err")
 
-	mockReader := &mockParcelRepo{getByIDResult: testParcel(domain.StatusCreated)}
+	mockReader := &mockParcelRepo{getByIDResult: testParcel(domain.StatusCreated, false)}
 
 	mockStatus := &mockStatusRepo{getResult: 2}
 
@@ -186,7 +186,7 @@ func TestChangeStatus_TransactionError(t *testing.T) {
 func TestChangeStatus_TransactionSuccess(t *testing.T) {
 	parcelID := 1
 
-	mockReader := &mockParcelRepo{getByIDResult: testParcel(domain.StatusCreated)}
+	mockReader := &mockParcelRepo{getByIDResult: testParcel(domain.StatusCreated, false)}
 
 	mockStatus := &mockStatusRepo{getResult: 2}
 
@@ -249,7 +249,7 @@ func TestChangeStatus_CacheDeleteError(t *testing.T) {
 
 	deleteCacheError := errors.New("delete cache by track error")
 
-	mockReader := &mockParcelRepo{getByIDResult: testParcel(domain.StatusCreated)}
+	mockReader := &mockParcelRepo{getByIDResult: testParcel(domain.StatusCreated, false)}
 
 	mockStatus := &mockStatusRepo{getResult: 2}
 
