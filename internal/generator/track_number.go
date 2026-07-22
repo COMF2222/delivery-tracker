@@ -6,7 +6,13 @@ import (
 	"math/big"
 )
 
-func GenerateTrackNumber() (string, error) {
+type TrackNumberGenerator struct{}
+
+func NewTrackNumberGenerator() *TrackNumberGenerator {
+	return &TrackNumberGenerator{}
+}
+
+func (t *TrackNumberGenerator) GenerateTrackNumber() (string, error) {
 	const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 	length := 12

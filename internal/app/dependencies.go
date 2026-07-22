@@ -3,6 +3,7 @@ package app
 import (
 	"delivery-tracker/internal/cache"
 	"delivery-tracker/internal/config"
+	"delivery-tracker/internal/generator"
 	"delivery-tracker/internal/handler"
 	"delivery-tracker/internal/middleware"
 	"delivery-tracker/internal/repository"
@@ -30,6 +31,8 @@ func NewDependencies(db *sqlx.DB, client *redis.Client, cfg *config.Config) *Dep
 
 	txManager := repository.NewTransactionManager(db)
 
+	trackGenerator := generator.NewTrackNumberGenerator()
+
 	parcelService := service.NewParcelService(
 		parcelRepo,
 		statusRepo,
@@ -38,6 +41,7 @@ func NewDependencies(db *sqlx.DB, client *redis.Client, cfg *config.Config) *Dep
 		auditRepo,
 		parcelCache,
 		txManager,
+		trackGenerator,
 	)
 
 	userService := service.NewUserService(userRepo, auditRepo, txManager)

@@ -13,3 +13,5 @@ var ErrParcelNotDelivered = errors.New("cannot archive not delivered parcel")
 var ErrParcelAlreadyArchived = errors.New("parcel already archive")
 var ErrInvalidPage = errors.New("invalid page")
 var ErrInvalidLimit = errors.New("invalid limit")
+
+var ErrFailedToGenerateUniqueTrack = errors.New("failed to generate unique track number after 5 attempts")

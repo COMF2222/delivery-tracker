@@ -52,3 +52,7 @@ type ParcelCache interface {
 type TransactionManager interface {
 	Do(fn func(tx *sqlx.Tx) error) error
 }
+
+type TrackGenerator interface {
+	GenerateTrackNumber() (string, error)
+}

@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"delivery-tracker/internal/domain"
-	"errors"
 	"github.com/jmoiron/sqlx"
 	"time"
 )
@@ -20,18 +19,21 @@ type mockParcelCache struct {
 }
 
 type mockParcelRepo struct {
-	getByTrackCalled bool
-	getByIDCalled    bool
-	archiveCalled    bool
-	updateCalled     bool
+	getByTrackCalled  bool
+	getByIDCalled     bool
+	createParcelCalls int
+	archiveCalled     bool
+	updateCalled      bool
 
 	getResult     *domain.Parcel
 	getByIDResult *domain.Parcel
 
-	getErr     error
-	getByIDErr error
-	updateErr  error
-	archiveErr error
+	getErr           error
+	getByIDErr       error
+	createParcelErrs []error
+	createParcelErr  error
+	updateErr        error
+	archiveErr       error
 }
 
 type mockParcelPhotoRepo struct {
@@ -68,6 +70,15 @@ type mockAuditRepo struct {
 type mockTransactionManager struct {
 	doCalled bool
 	doErr    error
+}
+
+type mockGenerator struct {
+	generatorCalls int
+
+	generatorErrs    []error
+	generatorErr     error
+	generatorResults []string
+	generatorResult  string
 }
 
 func (m *mockParcelCache) GetByTrack(ctx context.Context, trackNumber string) (*domain.ParcelDetails, error) {
@@ -131,7 +142,14 @@ func (m *mockParcelRepo) UpdateStatusTx(tx *sqlx.Tx, parcelID, statusID int, loc
 }
 
 func (m *mockParcelRepo) CreateParcel(parcel *domain.Parcel, statusID int) error {
-	return errors.New("create parcel should not be called")
+	index := m.createParcelCalls
+	m.createParcelCalls++
+
+	if index < len(m.createParcelErrs) {
+		return m.createParcelErrs[index]
+	}
+
+	return m.createParcelErr
 }
 
 func (m *mockParcelRepo) ArchiveTx(tx *sqlx.Tx, parcelID int) error {
@@ -147,4 +165,15 @@ func (m *mockTransactionManager) Do(fn func(tx *sqlx.Tx) error) error {
 	}
 
 	return fn(nil)
+}
+
+func (m *mockGenerator) GenerateTrackNumber() (string, error) {
+	index := m.generatorCalls
+	m.generatorCalls++
+
+	if index < len(m.generatorErrs) {
+		return m.generatorResults[index], m.generatorErrs[index]
+	}
+
+	return m.generatorResult, m.generatorErr
 }

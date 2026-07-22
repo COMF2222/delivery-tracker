@@ -26,6 +26,8 @@ type ParcelService struct {
 
 	parcelCache ParcelCache
 	txManager   TransactionManager
+
+	trackGenerator TrackGenerator
 }
 
 func NewParcelService(parcelRepo *repository.ParcelRepository,
@@ -34,17 +36,19 @@ func NewParcelService(parcelRepo *repository.ParcelRepository,
 	historyRepo *repository.ParcelStatusHistoryRepository,
 	auditRepo *repository.AuditRepository,
 	parcelCache *cache.ParcelCache,
-	txManager *repository.TransactionManager) *ParcelService {
+	txManager *repository.TransactionManager,
+	trackGenerator *generator.TrackNumberGenerator) *ParcelService {
 	return &ParcelService{
-		parcelReader: parcelRepo,
-		parcelWriter: parcelRepo,
-		parcelLister: parcelRepo,
-		statusRepo:   statusRepo,
-		photoRepo:    photoRepo,
-		historyRepo:  historyRepo,
-		auditRepo:    auditRepo,
-		parcelCache:  parcelCache,
-		txManager:    txManager,
+		parcelReader:   parcelRepo,
+		parcelWriter:   parcelRepo,
+		parcelLister:   parcelRepo,
+		statusRepo:     statusRepo,
+		photoRepo:      photoRepo,
+		historyRepo:    historyRepo,
+		auditRepo:      auditRepo,
+		parcelCache:    parcelCache,
+		txManager:      txManager,
+		trackGenerator: trackGenerator,
 	}
 }
 
@@ -58,7 +62,7 @@ func (s *ParcelService) CreateParcel(parcel *domain.Parcel) error {
 	}
 
 	for attempt := 0; attempt < 5; attempt++ {
-		track, err := generator.GenerateTrackNumber()
+		track, err := s.trackGenerator.GenerateTrackNumber()
 		if err != nil {
 			return fmt.Errorf("generate track number: %w", err)
 		}
@@ -77,7 +81,7 @@ func (s *ParcelService) CreateParcel(parcel *domain.Parcel) error {
 
 	}
 
-	return fmt.Errorf("failed to generate unique track number after 5 attempts")
+	return ErrFailedToGenerateUniqueTrack
 }
 
 func (s *ParcelService) GetByTrackNumber(ctx context.Context, trackNumber string) (*domain.ParcelDetails, error) {
