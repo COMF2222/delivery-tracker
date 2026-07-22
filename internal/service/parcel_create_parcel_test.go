@@ -23,10 +23,7 @@ func TestCreateParcel_StatusRepoError(t *testing.T) {
 		getErr: statusErr,
 	}
 
-	mockTrackGenerator := &mockGenerator{
-		generatorResults: []string{"TRACK001", "TRACK002"},
-		generatorErrs:    []error{nil, nil},
-	}
+	mockTrackGenerator := &mockGenerator{}
 
 	svc := ParcelService{parcelWriter: mockWriter, statusRepo: mockStatus, trackGenerator: mockTrackGenerator}
 
