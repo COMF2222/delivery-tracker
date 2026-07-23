@@ -81,6 +81,25 @@ type mockGenerator struct {
 	generatorResult  string
 }
 
+type mockLister struct {
+	listCalled         bool
+	listByStatusCalled bool
+
+	countCalled         bool
+	countByStatusCalled bool
+
+	listResult  []domain.Parcel
+	countResult int
+
+	listLimit  int
+	listOffset int
+
+	receivedStatus domain.Status
+
+	listErr  error
+	countErr error
+}
+
 func (m *mockParcelCache) GetByTrack(ctx context.Context, trackNumber string) (*domain.ParcelDetails, error) {
 	m.getCalled = true
 	return m.getResult, m.getErr
@@ -176,4 +195,30 @@ func (m *mockGenerator) GenerateTrackNumber() (string, error) {
 	}
 
 	return m.generatorResult, m.generatorErr
+}
+
+func (m *mockLister) List(limit, offset int) ([]domain.Parcel, error) {
+	m.listLimit = limit
+	m.listOffset = offset
+	m.listCalled = true
+	return m.listResult, m.listErr
+}
+
+func (m *mockLister) Count() (int, error) {
+	m.countCalled = true
+	return m.countResult, m.countErr
+}
+
+func (m *mockLister) ListByStatus(status domain.Status, limit, offset int) ([]domain.Parcel, error) {
+	m.listLimit = limit
+	m.listOffset = offset
+	m.listByStatusCalled = true
+	m.receivedStatus = status
+	return m.listResult, m.listErr
+}
+
+func (m *mockLister) CountByStatus(status domain.Status) (int, error) {
+	m.countByStatusCalled = true
+	m.receivedStatus = status
+	return m.countResult, m.countErr
 }

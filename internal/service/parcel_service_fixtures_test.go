@@ -41,3 +41,26 @@ func testHistory() []domain.ParcelStatusHistory {
 		},
 	}
 }
+
+func testListParcel(status domain.Status, isArchived bool) []domain.Parcel {
+	return []domain.Parcel{
+		{
+			ID:              1,
+			TrackNumber:     "Q4P405SHH8EG",
+			ItemName:        "Reina Petite Ring",
+			RecipientName:   "Иван",
+			CurrentStatus:   status,
+			CurrentLocation: "Berlin",
+			IsArchived:      isArchived,
+		},
+		{
+			ID:              2,
+			TrackNumber:     "Y0P408SJH8ER",
+			ItemName:        "Reina Petite Ring",
+			RecipientName:   "Андрей",
+			CurrentStatus:   status,
+			CurrentLocation: "Berlin",
+			IsArchived:      isArchived,
+		},
+	}
+}
